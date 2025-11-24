@@ -734,6 +734,116 @@ const StateTree = () => {
   );
 };
 
+// ========================
+// Race-to-1 DP Strategy (Joey G–style)
+// ========================
+const MAX_POOL_SIZE = 20;
+
+// memo: key -> win probability for player whose turn it is
+const raceWinMemo = new Map();
+// memo: key -> best bid size (subset size to ask about)
+const raceBestBidMemo = new Map();
+
+const raceKey = (n, m, turn) => `${n},${m},${turn}`;
+
+/**
+ * winProbRaceTo1(n, m, turn):
+ *   n = current player's pool size
+ *   m = opponent's pool size
+ *   turn = 0 or 1 (we keep it for symmetry, but we only really need '1' for the computer)
+ *
+ * Rules:
+ *   - If n == 1, current player already "wins" in race-to-1 model
+ *   - If m == 1, opponent already won
+ *   - Otherwise, pick subset size b (1..n-1) that maximizes
+ *       P(Yes)*P(win after Yes) + P(No)*P(win after No)
+ *     where after you move, roles swap (opponent's perspective).
+ */
+function winProbRaceTo1(n, m, turn) {
+  const key = raceKey(n, m, turn);
+  const cached = raceWinMemo.get(key);
+  if (cached !== undefined) return cached;
+
+  // Terminal-like safeguards
+  if (n <= 1 && m > 1) {
+    raceWinMemo.set(key, 1);
+    return 1;
+  }
+  if (m <= 1 && n > 1) {
+    raceWinMemo.set(key, 0);
+    return 0;
+  }
+  if (n <= 1 && m <= 1) {
+    // Extremely rare / symmetric limit case, treat as 0.5
+    raceWinMemo.set(key, 0.5);
+    return 0.5;
+  }
+
+  let bestProb = -1;
+  let bestB = 1;
+
+  // We don't bother with b = n (that would give pYes=1, pool unchanged)
+  for (let b = 1; b <= n - 1; b++) {
+    const pYes = b / n;
+    const nYes = b;
+    const nNo = n - b;
+
+    let probYes;
+    if (nYes === 1) {
+      // In race-to-1 model, you auto-win on this branch
+      probYes = 1;
+    } else {
+      // After your move, roles swap: opponent now has pool m and candidate pool nYes
+      // Your win prob = 1 - opponent's win prob
+      probYes = 1 - winProbRaceTo1(m, nYes, 1 - turn);
+    }
+
+    let probNo;
+    if (nNo === 1) {
+      probNo = 1;
+    } else {
+      probNo = 1 - winProbRaceTo1(m, nNo, 1 - turn);
+    }
+
+    const totalProb = pYes * probYes + (1 - pYes) * probNo;
+
+    if (totalProb > bestProb + 1e-12) {
+      bestProb = totalProb;
+      bestB = b;
+    }
+  }
+
+  raceWinMemo.set(key, bestProb);
+  raceBestBidMemo.set(key, bestB);
+  return bestProb;
+}
+
+// Precompute for all n,m <= 20, both turns (0/1) in Race-to-1 world
+function precomputeRaceTo1Strategy() {
+  for (let n = 2; n <= MAX_POOL_SIZE; n++) {
+    for (let m = 2; m <= MAX_POOL_SIZE; m++) {
+      winProbRaceTo1(n, m, 0);
+      winProbRaceTo1(n, m, 1);
+    }
+  }
+}
+precomputeRaceTo1Strategy();
+
+/**
+ * getRaceTo1BestBid(n, m):
+ *    Returns the best subset size b according to the race-to-1 DP.
+ *    If we somehow don't have a stored value, fall back to an
+ *    approximate half-split.
+ */
+function getRaceTo1BestBid(n, m) {
+  if (n <= 1) return 1;
+  const key = raceKey(n, m, 1); // "turn = 1" we use for the computer perspective
+  const stored = raceBestBidMemo.get(key);
+  if (stored !== undefined) return stored;
+
+  // conservative fallback: ordinary binary-ish split
+  return Math.max(1, Math.floor(n / 2));
+}
 // Corrected Game Component
 const CorrectedGame = () => {
   const [gameStarted, setGameStarted] = useState(false);
@@ -747,18 +857,26 @@ const CorrectedGame = () => {
   const [playerTurn, setPlayerTurn] = useState(true);
 
   const startGame = () => {
-    const pSecret = Math.floor(Math.random() * 20) + 1;
-    const cSecret = Math.floor(Math.random() * 20) + 1;
-    setPlayerSecret(pSecret);
-    setComputerSecret(cSecret);
-    setPlayerPool(Array.from({length: 20}, (_, i) => i + 1));
-    setComputerPool(Array.from({length: 20}, (_, i) => i + 1));
-    setSelectedNumbers([]);
-    setGameLog([`🎮 Game Started! Your secret number is ${cSecret}`]);
-    setWinner(null);
-    setGameStarted(true);
-    setPlayerTurn(true);
-  };
+  // Number the PLAYER is trying to guess (the computer's secret)
+  const computerHiddenNumber = Math.floor(Math.random() * 20) + 1;
+  // Number the COMPUTER is trying to guess (the player's secret)
+  const playerHiddenNumber = Math.floor(Math.random() * 20) + 1;
+
+  setPlayerSecret(computerHiddenNumber);   // you are guessing this
+  setComputerSecret(playerHiddenNumber);   // computer is guessing this
+
+  const fullPool = Array.from({ length: 20 }, (_, i) => i + 1);
+
+  setPlayerPool(fullPool);
+  setComputerPool(fullPool);
+  setSelectedNumbers([]);
+  setGameLog([
+    "🎮 Game started! Each side has secretly chosen a number between 1 and 20.",
+  ]);
+  setWinner(null);
+  setGameStarted(true);
+  setPlayerTurn(true);
+};
 
   const handleNumberClick = (num) => {
     if (!playerTurn || winner) return;
@@ -843,47 +961,68 @@ const CorrectedGame = () => {
   };
 
   const computerTurn = () => {
-    if (winner) return;
+  if (winner) return;
 
-    // Check if computer can make exact guess
-    if (computerPool.length === 1) {
-      const guess = computerPool[0];
-      if (guess === computerSecret) {
-        setWinner('computer');
-        setGameLog(prev => [...prev, `🤖 Computer declared ${guess} - CORRECT! Computer wins!`]);
-      } else {
-        setGameLog(prev => [...prev, `🤖 Computer declared ${guess} - WRONG!`]);
-        setPlayerTurn(true);
-      }
-      return;
+  // If computer already has a single candidate, we are in Death Valley resolution:
+  // it "knows" the answer and must now declare exactly.
+  if (computerPool.length === 1) {
+    const guess = computerPool[0];
+    if (guess === computerSecret) {
+      setWinner("computer");
+      setGameLog((prev) => [
+        ...prev,
+        `🤖 Computer declared ${guess} – CORRECT! Computer wins!`,
+      ]);
+    } else {
+      // In your current rules, a wrong guess just removes the candidate,
+      // not an instant loss (Mercy-like). We keep that behavior.
+      setGameLog((prev) => [
+        ...prev,
+        `🤖 Computer declared ${guess} – WRONG.`,
+      ]);
+      // Technically this path is almost never reached if pool length is 1,
+      // but we include it for completeness.
+      setPlayerTurn(true);
     }
+    return;
+  }
 
-    // Use optimal bidding strategy
-    const n = computerPool.length;
-    const m = playerPool.length;
-    const bidSize = getOptimalBidSize(n, m);
-    
-    const sortedPool = [...computerPool].sort((a, b) => a - b);
-    const min = sortedPool[0];
-    const max = sortedPool[Math.min(bidSize - 1, sortedPool.length - 1)];
-    
-    const inRange = min <= computerSecret && computerSecret <= max;
-    
-    const newComputerPool = inRange
-      ? computerPool.filter(n => n >= min && n <= max)
-      : computerPool.filter(n => n < min || n > max);
-    
-    setComputerPool(newComputerPool);
-    
-    const logMsg = `🤖 Computer asked: [${min}, ${max}]? Answer: ${inRange ? 'YES' : 'NO'} (${newComputerPool.length} remaining)`;
-    setGameLog(prev => [...prev, logMsg]);
+  const n = computerPool.length;
+  const m = playerPool.length;
 
-    if (newComputerPool.length === 1) {
-      setGameLog(prev => [...prev, '🤖 Computer knows the answer but must declare on their next turn']);
-    }
-    
-    setPlayerTurn(true);
-  };
+  // Joey G / race-to-1 style optimal subset size
+  const bidSize = getRaceTo1BestBid(n, m);
+
+  const sortedPool = [...computerPool].sort((a, b) => a - b);
+  const min = sortedPool[0];
+  const max = sortedPool[Math.min(bidSize - 1, sortedPool.length - 1)];
+
+  const inRange = min <= computerSecret && computerSecret <= max;
+
+  const newComputerPool = inRange
+    ? computerPool.filter((num) => num >= min && num <= max)
+    : computerPool.filter((num) => num < min || num > max);
+
+  setComputerPool(newComputerPool);
+
+  const logMsg = `🤖 Computer asked: [${min}, ${max}]? Answer: ${
+    inRange ? "YES" : "NO"
+  } (${newComputerPool.length} remaining)`;
+  setGameLog((prev) => [...prev, logMsg]);
+
+  // Here is where your model diverges from the race-to-1 DP:
+  // In the DP, hitting length 1 is an immediate win; in your game
+  // it's a Death Valley knowledge state: "knows the answer but must wait."
+  if (newComputerPool.length === 1) {
+    setGameLog((prev) => [
+      ...prev,
+      "🤖 Computer now knows the answer, but must declare on a future turn (Death Valley).",
+    ]);
+  }
+
+  // Hand control back to the human player either way
+  setPlayerTurn(true);
+};
 
   return (
     <div className="corrected-game-container">
@@ -911,9 +1050,10 @@ const CorrectedGame = () => {
             <div style={{marginTop: '1rem', padding: '1rem', background: '#e0e7ff', borderRadius: '8px', fontSize: '0.95rem'}}>
               <strong style={{color: '#1e40af'}}>Computer Strategy:</strong>
               <p style={{color: '#1e40af', marginTop: '0.5rem', marginBottom: 0}}>
-                The computer uses an optimal bidding strategy approximating b*(n,m) - adjusting 
-                subset sizes based on relative pool sizes to maximize win probability, but must 
-                still make exact guesses to win.
+                The computer opponent uses an <strong>optimal bidding strategy</strong> inspired by
+  Joey G's <code>GuessWhoBestMove</code> implementation and Dr. Nica's dynamic programming approach.
+  It precomputes the best subset size for each (n, m) state in a Race-to-1 model,
+  then uses that question policy inside this corrected, turn-based Death Valley game.
               </p>
             </div>
           </div>
