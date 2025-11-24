@@ -308,17 +308,209 @@ export default function GuessWhoAnalysis() {
       </section>
 
       {/* State Tree Comparison */}
-      <section className="section">
+<section className="section">
+  <div className="content">
+    <h2>Turn Structure Comparison</h2>
+    <p>
+      Here's a side-by-side comparison of how the same game plays out in Nica's Race-to-1 
+      model versus real Guess Who:
+    </p>
+    <StateTree />
+  </div>
+</section>
+            {/* Optimal DP vs Race-to-1 Analysis */}
+      <section className="section alt">
         <div className="content">
-          <h2>Turn Structure Comparison</h2>
+          <h2>The Optimal Death Valley Bot vs the Race-to-1 Model</h2>
+
           <p>
-            Here's a side-by-side comparison of how the same game plays out in Nica's Race-to-1 
-            model versus real Guess Who:
+            After rebuilding the game with the correct turn-based rules and the Death Valley
+            state preserved, I defined a new value function{" "}
+            <code>V(n, m)</code> that matches the actual mathematical structure of this
+            corrected game.
           </p>
-          <StateTree />
+
+          <div className="math-block-container">
+            <h3>The Value Function V(n, m)</h3>
+            <p>
+              Here <code>V(n, m)</code> means:
+            </p>
+            <p className="quote">
+              "The win probability for the player whose turn it is, when their candidate
+              pool has size <code>n</code> and the opponent's pool has size <code>m</code>,
+              under the real turn-based rules with Death Valley (no auto-win at n = 1)."
+            </p>
+            <p>
+              On the 1–20 board, the starting state is{" "}
+              <code>V(20, 20)</code>. Solving the dynamic program gives:
+            </p>
+            <div className="formula-display">
+              <code>V(20, 20) ≈ 0.63</code>
+              <br />
+              <code>b*(20, 20) = 8</code>
+            </div>
+            <p>
+              So in the corrected game, the optimal player to move wins about 63% of the
+              time, and the first question is not a perfect half-split. Instead, the
+              optimal strategy asks about 8 numbers, not 10:
+            </p>
+            <p className="quote">
+              "Is your number in the first 8 candidates?"
+            </p>
+            <p>
+              The bid function <code>b*(n, m)</code> is the subset size that maximizes{" "}
+              <code>V(n, m)</code> at each state. It is computed by the DP via:
+            </p>
+            <div className="formula-display">
+              <code>
+                V(n, m) = max<sub>1 ≤ b ≤ n−1</sub> [
+                (b/n) · (1 − V(m, b)) + (1 − b/n) · (1 − V(m, n − b))]
+              </code>
+            </div>
+            <p>
+              After each YES/NO answer, roles swap. Your win chance this turn is{" "}
+              <code>1 − V(m, n')</code> because the opponent becomes the player to move
+              in the next state. Crucially, there is no special rule that says
+              "if n' = 1, you instantly win."
+            </p>
+          </div>
+
+          <div className="math-block-container">
+            <h3>Race-to-1 vs Turn-Based Death Valley</h3>
+            <p>
+              In Dr. Nica's marimo code (and in Rober's mental model), the abstraction is
+              different. It implicitly works with a "Race-to-1" value function{" "}
+              <code>W(n, m)</code> where:
+            </p>
+            <ul>
+              <li>
+                Hitting <code>n = 1</code> is treated as an absorbing win:{" "}
+                <code>W(1, m) = 1</code> when <code>m &gt; 1</code>.
+              </li>
+              <li>
+                Hitting <code>m = 1</code> for the opponent is treated as an absorbing
+                loss: <code>W(n, 1) = 0</code> when <code>n &gt; 1</code>.
+              </li>
+              <li>
+                Any branch that drives your pool to size 1 is given value 1 immediately.
+              </li>
+            </ul>
+            <p className="emphasis">
+              That model optimizes "who reaches a single remaining candidate first,"
+              not "who actually wins in a turn-based game where the opponent still
+              gets a final guess."
+            </p>
+            <p>
+              In other words, <code>W(n, m)</code> is a pure deduction race.{" "}
+              <code>V(n, m)</code> is a turn-based game with Death Valley: you can know
+              the answer, pass the turn, and still lose.
+            </p>
+          </div>
+
+          <div className="math-block-container">
+            <h3>Head-to-Head Simulation Results</h3>
+            <p>
+              When I pit the Optimal Death Valley (ODV) DP bot against both Rober-style
+              play and my earlier Race-to-1 DP approximation, I get:
+            </p>
+            <div className="formula-display">
+              <code>V(20,20) = 0.6300000000000001</code>
+              <br />
+              <code>optimal b*(20,20) = 8</code>
+              <br />
+              <br />
+              <code>ODV_vs_Rober_P1starts:</code>
+              <br />
+              <code>  P1 wins: 320, P2 wins: 80,  total: 400</code>
+              <br />
+              <code>  P1 win rate: 0.800, P2 win rate: 0.200</code>
+              <br />
+              <br />
+              <code>Rober_vs_ODV_P1starts:</code>
+              <br />
+              <code>  P1 wins: 248, P2 wins: 152, total: 400</code>
+              <br />
+              <code>  P1 win rate: 0.620, P2 win rate: 0.380</code>
+              <br />
+              <br />
+              <code>ODV_vs_DPapprox_P1starts:</code>
+              <br />
+              <code>  P1 wins: 320, P2 wins: 80,  total: 400</code>
+              <br />
+              <code>  P1 win rate: 0.800, P2 win rate: 0.200</code>
+              <br />
+              <br />
+              <code>DPapprox_vs_ODV_P1starts:</code>
+              <br />
+              <code>  P1 wins: 248, P2 wins: 152, total: 400</code>
+              <br />
+              <code>  P1 win rate: 0.620, P2 win rate: 0.380</code>
+              <br />
+              <br />
+              <code>ODV_vs_ODV_P1starts:</code>
+              <br />
+              <code>  P1 wins: 252, P2 wins: 148, total: 400</code>
+              <br />
+              <code>  P1 win rate: 0.630, P2 win rate: 0.370</code>
+              <br />
+              <br />
+              <code>P1 (Rober) vs P2 (DP), P1 starts:</code>
+              <br />
+              <code>  P1 wins: 248, P2 wins: 152, total: 400</code>
+              <br />
+              <code>  P1 win rate: 0.620, P2 win rate: 0.380</code>
+              <br />
+              <br />
+              <code>P1 (DP) vs P2 (Rober), P1 starts:</code>
+              <br />
+              <code>  P1 wins: 320, P2 wins: 80, total: 400</code>
+              <br />
+              <code>  P1 win rate: 0.800, P2 win rate: 0.200</code>
+            </div>
+            <p className="emphasis">
+              When both players use the ODV strategy, the empirical P1 win rate (~0.63)
+              matches the theoretical value <code>V(20,20) ≈ 0.63</code>. That is exactly
+              what we expect from a correctly solved dynamic program.
+            </p>
+          </div>
+
+          <div className="contrast-box">
+            <h3>Why the Old Model Loses Games the Optimal One Wins</h3>
+            <ul>
+              <li>
+                <strong>Overvaluing knowledge:</strong> In the Race-to-1 model, driving
+                your pool from <code>n = 2</code> to <code>n = 1</code> is treated as a
+                literal win. In the real game, it just means you enter Death Valley: you
+                know the answer but must pass the turn and survive.
+              </li>
+              <li>
+                <strong>Ignoring the opponent's counterplay:</strong> When the opponent's
+                pool is already small, slamming into <code>n = 1</code> can actually be
+                dangerous. They now get a high-probability shot to steal the game on
+                their next move.
+              </li>
+              <li>
+                <strong>Too-sharp splits near the endgame:</strong> Race-to-1 DP keeps
+                choosing bids that maximize the chance of hitting <code>n' = 1</code>{" "}
+                immediately. The ODV DP sometimes prefers a bid that leaves{" "}
+                <code>n'</code> at 2 or 3 while keeping the opponent wider, because
+                surviving the next turn matters more than "knowing right now."
+              </li>
+              <li>
+                <strong>Small local errors, global gap:</strong> These tiny misplays in
+                Death Valley states accumulate. A symmetric Race-to-1 style strategy
+                hovers around a 0.62/0.38 split for the first player, while the corrected
+                ODV strategy reaches the true ~0.63/0.37 split.
+              </li>
+            </ul>
+            <p className="emphasis">
+              In short: the Race-to-1 abstraction optimizes the wrong objective
+              ("first to deduce"), so it leaks a small but real slice of games that the
+              Optimal Death Valley bot wins in the fully corrected model.
+            </p>
+          </div>
         </div>
       </section>
-
       {/* Conclusion */}
       <section className="section conclusion">
         <div className="content">
