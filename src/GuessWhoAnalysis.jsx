@@ -936,58 +936,63 @@ const StateTree = () => {
 //             pool has size m under the *turn-based* game
 //             where Death Valley exists (no auto-win at n = 1).
 
+// ========================
+// Optimal "Death Valley" DP Strategy (with guess action)
+// ========================
+//
+// dvValue(n, m) = win probability for the player to move,
+// under the corrected turn-based rules (Death Valley + exact guess + Mercy).
+//
+// Actions considered by the DP:
+//   - Guess now  → success prob = 1/n
+//   - Ask a question [subset of size b] with 1 <= b <= n-1
+//     and then roles swap.
+//
+// This automatically gives:
+//   - V(1, m) ≈ 1   (you just guess and win)
+//   - V(n, 1) ≈ 1/n (they know you, but you get one shot at guessing them)
+
 const MAX_POOL_SIZE = 20;
 
-const dvValueMemo = new Map();   // key (n,m) -> V(n,m)
-const dvBestBidMemo = new Map(); // key (n,m) -> optimal bid b
+const dvValueMemo = new Map();   // key "n,m" -> V(n,m)
+const dvBestBidMemo = new Map(); // key "n,m" -> best question size b (if any)
 
 const dvKey = (n, m) => `${n},${m}`;
 
 function dvValue(n, m) {
+  if (n <= 0 || m <= 0) {
+    // Degenerate: treat as 0.5
+    return 0.5;
+  }
+
   const key = dvKey(n, m);
   const cached = dvValueMemo.get(key);
   if (cached !== undefined) return cached;
 
-  // Boundary behavior in the Death Valley model
-  if (n <= 1 && m > 1) {
-    // You effectively know the answer, opponent still has work.
-    dvValueMemo.set(key, 1.0);
-    return 1.0;
-  }
-  if (m <= 1 && n > 1) {
-    // Opponent effectively knows, you do not.
-    dvValueMemo.set(key, 0.0);
-    return 0.0;
-  }
-  if (n <= 1 && m <= 1) {
-    // Symmetric corner: both know, but turn order decides.
-    dvValueMemo.set(key, 0.5);
-    return 0.5;
-  }
+  // Option 1: "guess now"
+  // With n candidates and no extra info, probability of being right is 1/n.
+  let bestVal = 1 / n;
+  let bestB = 0; // 0 means "best is to guess", not to ask a question
 
-  let bestVal = -1;
-  let bestB = 1;
+  // Option 2: ask a question of size b (1 <= b <= n-1), then roles swap
+  if (n > 1) {
+    for (let b = 1; b <= n - 1; b++) {
+      const pYes = b / n;
+      const valYes = 1 - dvValue(m, b);       // YES branch: opponent to move with pool (m, b)
+      const valNo  = 1 - dvValue(m, n - b);   // NO branch: opponent to move with pool (m, n-b)
+      const ev = pYes * valYes + (1 - pYes) * valNo;
 
-  // Never bid b = n (no information)
-  for (let b = 1; b <= n - 1; b++) {
-    const pYes = b / n;
-    const nYes = b;
-    const nNo = n - b;
-
-    // After your question, roles swap: opponent to move with pools (m, n')
-    const valYes = 1 - dvValue(m, nYes);
-    const valNo = 1 - dvValue(m, nNo);
-
-    const ev = pYes * valYes + (1 - pYes) * valNo;
-
-    if (ev > bestVal + 1e-12) {
-      bestVal = ev;
-      bestB = b;
+      if (ev > bestVal + 1e-12) {
+        bestVal = ev;
+        bestB = b;
+      }
     }
   }
 
   dvValueMemo.set(key, bestVal);
-  dvBestBidMemo.set(key, bestB);
+  if (bestB > 0) {
+    dvBestBidMemo.set(key, bestB);
+  }
   return bestVal;
 }
 
@@ -1003,15 +1008,18 @@ precomputeDeathValleyStrategy();
 /**
  * getDeathValleyBestBid(n, m):
  *   Returns the optimal subset size b according to the
- *   turn-based Death Valley DP.
+ *   turn-based Death Valley DP *if* asking a question is
+ *   better than just guessing. If the DP prefers guessing,
+ *   this falls back to a simple half-split.
  */
 function getDeathValleyBestBid(n, m) {
   if (n <= 1) return 1;
+
   const key = dvKey(n, m);
   const stored = dvBestBidMemo.get(key);
   if (stored !== undefined) return stored;
 
-  // fallback if missing
+  // fallback: approximate half-split
   return Math.max(1, Math.floor(n / 2));
 }
 
@@ -1104,6 +1112,116 @@ function evaluatePlayerMoveQuality(n, m, b, preWin) {
   };
 }
 // ========================
+// Optimal "Death Valley" DP Strategy (with guess action)
+// ========================
+//
+// dvValue(n, m) = win probability for the player to move,
+// under the corrected turn-based rules (Death Valley + exact guess + Mercy).
+//
+// Actions considered by the DP:
+//   - Guess now  → success prob = 1/n
+//   - Ask a question [subset of size b] with 1 <= b <= n-1
+//     and then roles swap.
+//
+// This automatically gives:
+//   - V(1, m) ≈ 1   (you just guess and win)
+//   - V(n, 1) ≈ 1/n (they know you, but you get one shot at guessing them)
+
+function evaluatePlayerMoveQuality({
+  n,          // your pool size BEFORE the move
+  m,          // opponent pool size BEFORE the move
+  b,          // subset size you actually asked about
+  preWin,     // dvValue-based win prob before the move
+  branchWin,  // dvValue-based win prob after this actual branch
+}) {
+  if (n <= 1 || b <= 0 || b >= n) return null;
+
+  const optimalVal = dvValue(n, m);
+  const optimalB   = getDeathValleyBestBid(n, m);
+
+  // Expected value of your chosen question, averaged over Yes/No
+  const pYes   = b / n;
+  const valYes = 1 - dvValue(m, b);
+  const valNo  = 1 - dvValue(m, n - b);
+  const actualEV = pYes * valYes + (1 - pYes) * valNo;
+
+  // How much your choice sacrifices vs optimal *on average*
+  const evLoss = Math.max(0, optimalVal - actualEV);
+
+  // Actual swing in this branch vs what your position was before the move
+  const branchGain = branchWin - preWin;     // > 0 = your real odds went up
+  const branchDrop = preWin - branchWin;     // > 0 = your real odds went down
+
+  let category = "good";
+  let label    = "Good move";
+  let icon     = "✓";
+
+  // ==== BRILLIANT (your "lucky but better than optimal" definition) ====
+  // You intentionally did something the engine doesn't like (EV-wise),
+  // but this actual branch shoots your odds up a lot.
+  //
+  // Conditions:
+  //   1) You did NOT play the engine move (b != optimalB)
+  //   2) On average, your move is clearly worse than optimal (evLoss > 0.01)
+  //   3) This real branch increased your winning chances by ≥ 15 percentage points.
+  if (b !== optimalB && evLoss > 0.01 && branchGain >= 0.15) {
+    return {
+      category: "brilliant",
+      label: "Brilliant (lucky, but above optimal EV!)",
+      icon: "???",
+      evLoss,
+      branchGain,
+      branchDrop,
+      actualEV,
+      optimalVal,
+      optimalB,
+    };
+  }
+
+  // For everything else, classify based on how much your *real odds* changed.
+  if (branchDrop <= 0.005) {
+    // basically didn't hurt your position (and maybe improved it)
+    if (b === optimalB) {
+      category = "best";
+      label    = "Best move (engine match)";
+      icon     = "!!";
+    } else {
+      category = "great";
+      label    = "Great move";
+      icon     = "★";
+    }
+  } else if (branchDrop <= 0.03) {
+    category = "good";
+    label    = "Good move";
+    icon     = "✓";
+  } else if (branchDrop <= 0.08) {
+    category = "inaccuracy";
+    label    = "Inaccuracy";
+    icon     = "!?";
+  } else if (branchDrop <= 0.20) {
+    category = "mistake";
+    label    = "Mistake";
+    icon     = "?";
+  } else {
+    category = "blunder";
+    label    = "Blunder";
+    icon     = "!!!";
+  }
+
+  return {
+    category,
+    label,
+    icon,
+    evLoss,
+    branchGain,
+    branchDrop,
+    actualEV,
+    optimalVal,
+    optimalB,
+  };
+}
+
+// ========================
 // Corrected Game Component (single optimal bot)
 // ========================
 // ========================
@@ -1119,6 +1237,9 @@ const CorrectedGame = () => {
   const [gameLog, setGameLog] = useState([]);
   const [winner, setWinner] = useState(null);
   const [playerTurn, setPlayerTurn] = useState(true);
+  const [playerWinProb, setPlayerWinProb] = useState(null);
+const [lastMoveQuality, setLastMoveQuality] = useState(null);
+
 
   // New: engine evaluation + last move quality
   const [winProb, setWinProb] = useState(null); // P1's win prob (0–1)
@@ -1167,7 +1288,11 @@ const CorrectedGame = () => {
   };
 
   const makeRangeGuess = () => {
-    if (!playerTurn || winner || selectedNumbers.length === 0) return;
+  if (!playerTurn || winner || selectedNumbers.length === 0) return;
+
+  const nBefore = playerPool.length;
+  const mBefore = computerPool.length;
+  const preWin  = playerWinProb !== null ? playerWinProb : dvValue(nBefore, mBefore);
 
     const min = selectedNumbers[0];
     const max =
@@ -1222,26 +1347,38 @@ const CorrectedGame = () => {
       }
     }
     
-    // Range guess
-    const inRange = min <= playerSecret && playerSecret <= max;
-    const newPlayerPool = inRange
-      ? playerPool.filter((n) => n >= min && n <= max)
-      : playerPool.filter((n) => n < min || n > max);
-    
-    setPlayerPool(newPlayerPool);
-    
-    const logMsg = `👤 You asked: [${min}, ${max}]? Answer: ${
-      inRange ? "YES" : "NO"
-    } (${newPlayerPool.length} remaining)`;
-    setGameLog((prev) => [...prev, logMsg]);
+    /// Range guess
+const inRange = min <= playerSecret && playerSecret <= max;
+const newPlayerPool = inRange 
+  ? playerPool.filter(n => n >= min && n <= max)
+  : playerPool.filter(n => n < min || n > max);
 
-    // After your question resolves, it's computer's turn: update engine eval
-    const newWin = computePlayerWinProb(
-      newPlayerPool.length,
-      computerPool.length,
-      false
-    );
-    setWinProb(newWin);
+setPlayerPool(newPlayerPool);
+
+const logMsg = `👤 You asked: [${min}, ${max}]? Answer: ${inRange ? 'YES' : 'NO'} (${newPlayerPool.length} remaining)`;
+setGameLog(prev => [...prev, logMsg]);
+
+    
+
+    // After your question, it's the computer's turn.
+// From your perspective, your new win prob is 1 - V(mBefore, newN)
+const newN = newPlayerPool.length;
+const branchWin = 1 - dvValue(mBefore, newN);
+setPlayerWinProb(branchWin);
+
+// Subset size b you actually asked about
+const b = max - min + 1;
+
+// Evaluate move quality
+const quality = evaluatePlayerMoveQuality({
+  n: nBefore,
+  m: mBefore,
+  b,
+  preWin,
+  branchWin,
+});
+setLastMoveQuality(quality || null);
+
     
     setSelectedNumbers([]);
     setPlayerTurn(false);
@@ -1408,6 +1545,21 @@ const CorrectedGame = () => {
               <div className="pool-count">
                 {playerPool.length} possibilities
               </div>
+              {playerWinProb !== null && (
+  <div className="win-prob">
+    Win chance: <span className="prob-number">
+      {(playerWinProb * 100).toFixed(1)}%
+    </span>
+  </div>
+)}
+
+{lastMoveQuality && (
+  <div className={`move-quality move-${lastMoveQuality.category}`}>
+    <span className="move-icon">{lastMoveQuality.icon}</span>
+    <span className="move-label">{lastMoveQuality.label}</span>
+  </div>
+)}
+
 
               {/* Live engine eval for P1 */}
               {winProb !== null && (
