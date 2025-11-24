@@ -1015,8 +1015,99 @@ function getDeathValleyBestBid(n, m) {
   return Math.max(1, Math.floor(n / 2));
 }
 
+/**
+ * computePlayerWinProb(nPlayer, nComputer, isPlayerTurn)
+ * Returns P1's (human's) win probability from the current state,
+ * assuming perfect play for both sides going forward.
+ */
+function computePlayerWinProb(nPlayer, nComputer, isPlayerTurn) {
+  if (nPlayer <= 0 || nComputer <= 0) return null;
+  if (isPlayerTurn) {
+    // Player to move: directly V(n, m)
+    return dvValue(nPlayer, nComputer);
+  } else {
+    // Computer to move: P1's win prob = 1 - V(m, n)
+    return 1 - dvValue(nComputer, nPlayer);
+  }
+}
+
+/**
+ * evaluatePlayerMoveQuality(n, m, b, preWin):
+ *   n, m   = pool sizes before the move
+ *   b      = subset size you actually asked about
+ *   preWin = P1 engine eval before the move
+ *
+ * Uses the DP to compute:
+ *   - optimal EV (best possible question)
+ *   - EV of the question you actually asked
+ * and classifies the move à la chess engine.
+ */
+function evaluatePlayerMoveQuality(n, m, b, preWin) {
+  if (n <= 1 || b <= 0 || b >= n) return null;
+
+  const optimalVal = dvValue(n, m);
+  const optimalB   = getDeathValleyBestBid(n, m);
+
+  // EV of the actual question with subset size b
+  const pYes   = b / n;
+  const valYes = 1 - dvValue(m, b);
+  const valNo  = 1 - dvValue(m, n - b);
+  const actualEV = pYes * valYes + (1 - pYes) * valNo;
+
+  const loss        = Math.max(0, optimalVal - actualEV); // how much worse than optimal
+  const improvement = actualEV - preWin;                  // how much you improved vs pre-move
+
+  let category = "good";
+  let label    = "Good move";
+  let icon     = "✓";
+
+  // "Brilliant": near-optimal AND massively improves your odds
+  if (improvement >= 0.15 && loss < 0.02) {
+    category = "brilliant";
+    label    = "Brilliant move!";
+    icon     = "!!!";          // purple circle, white exclamations via CSS
+  } else if (loss < 1e-4 && b === optimalB) {
+    category = "best";
+    label    = "Best move (engine match)";
+    icon     = "!!";           // light blue circle
+  } else if (loss < 0.01) {
+    category = "great";
+    label    = "Great move";
+    icon     = "★";            // green star
+  } else if (loss < 0.03) {
+    category = "good";
+    label    = "Good move";
+    icon     = "✓";            // grey-green checkmark
+  } else if (loss < 0.08) {
+    category = "inaccuracy";
+    label    = "Inaccuracy";
+    icon     = "!?";           // yellow ?!
+  } else if (loss < 0.20) {
+    category = "mistake";
+    label    = "Mistake";
+    icon     = "?";            // dark orange ?
+  } else {
+    category = "blunder";
+    label    = "Blunder";
+    icon     = "???";          // dark red ???
+  }
+
+  return {
+    category,
+    label,
+    icon,
+    loss,
+    improvement,
+    actualEV,
+    optimalVal,
+    optimalB,
+  };
+}
 // ========================
 // Corrected Game Component (single optimal bot)
+// ========================
+// ========================
+// Corrected Game Component (single optimal bot + live eval)
 // ========================
 const CorrectedGame = () => {
   const [gameStarted, setGameStarted] = useState(false);
@@ -1028,6 +1119,10 @@ const CorrectedGame = () => {
   const [gameLog, setGameLog] = useState([]);
   const [winner, setWinner] = useState(null);
   const [playerTurn, setPlayerTurn] = useState(true);
+
+  // New: engine evaluation + last move quality
+  const [winProb, setWinProb] = useState(null); // P1's win prob (0–1)
+  const [lastMoveQuality, setLastMoveQuality] = useState(null);
 
   const startGame = () => {
     // Number the PLAYER is trying to guess (the computer's secret)
@@ -1050,6 +1145,10 @@ const CorrectedGame = () => {
     setWinner(null);
     setGameStarted(true);
     setPlayerTurn(true);
+
+    // Initial engine eval: V(20, 20) from P1's perspective
+    setWinProb(computePlayerWinProb(fullPool.length, fullPool.length, true));
+    setLastMoveQuality(null);
   };
 
   const handleNumberClick = (num) => {
@@ -1073,12 +1172,28 @@ const CorrectedGame = () => {
     const min = selectedNumbers[0];
     const max =
       selectedNumbers.length === 2 ? selectedNumbers[1] : selectedNumbers[0];
-    
+
+    const n = playerPool.length;
+    const m = computerPool.length;
+
+    // Engine eval BEFORE the move
+    const preWin = computePlayerWinProb(n, m, true);
+
+    // Size of the subset you are actually querying: all numbers in your pool within [min, max]
+    const subsetSize = playerPool.filter((x) => x >= min && x <= max).length;
+
+    // Evaluate move quality (unless it's a degenerate case)
+    const quality = evaluatePlayerMoveQuality(n, m, subsetSize, preWin);
+    if (quality) {
+      setLastMoveQuality(quality);
+    }
+
     // Check if this is an exact guess (min === max)
     if (min === max) {
       const guess = min;
       if (guess === playerSecret) {
         setWinner("player");
+        setWinProb(1.0);
         setGameLog((prev) => [
           ...prev,
           `👤 You asked: [${guess}, ${guess}]? Answer: YES ✅ CORRECT! You win!`,
@@ -1091,6 +1206,15 @@ const CorrectedGame = () => {
         ]);
         const newPlayerPool = playerPool.filter((n) => n !== guess);
         setPlayerPool(newPlayerPool);
+
+        // After your move, it's computer's turn
+        const newWin = computePlayerWinProb(
+          newPlayerPool.length,
+          computerPool.length,
+          false
+        );
+        setWinProb(newWin);
+
         setSelectedNumbers([]);
         setPlayerTurn(false);
         setTimeout(() => computerTurn(), 1000);
@@ -1110,6 +1234,14 @@ const CorrectedGame = () => {
       inRange ? "YES" : "NO"
     } (${newPlayerPool.length} remaining)`;
     setGameLog((prev) => [...prev, logMsg]);
+
+    // After your question resolves, it's computer's turn: update engine eval
+    const newWin = computePlayerWinProb(
+      newPlayerPool.length,
+      computerPool.length,
+      false
+    );
+    setWinProb(newWin);
     
     setSelectedNumbers([]);
     setPlayerTurn(false);
@@ -1125,17 +1257,19 @@ const CorrectedGame = () => {
       const guess = computerPool[0];
       if (guess === computerSecret) {
         setWinner("computer");
+        setWinProb(0.0);
         setGameLog((prev) => [
           ...prev,
           `🤖 Computer declared ${guess} – CORRECT! Computer wins!`,
         ]);
       } else {
-        // In this corrected ruleset, a wrong guess just removes that candidate
-        // (Mercy-style continuation), not an instant loss.
+        // This path is basically unreachable under consistent DP play,
+        // but we include it for completeness.
         setGameLog((prev) => [
           ...prev,
           `🤖 Computer declared ${guess} – WRONG.`,
         ]);
+        // If we ever wanted: remove this candidate and recompute eval.
         setPlayerTurn(true);
       }
       return;
@@ -1174,7 +1308,15 @@ const CorrectedGame = () => {
       ]);
     }
 
-    // Hand control back to the human player either way
+    // After computer's move, it's your turn: update engine eval for P1 to move
+    const newWin = computePlayerWinProb(
+      playerPool.length,
+      newComputerPool.length,
+      true
+    );
+    setWinProb(newWin);
+
+    // Hand control back to the human player
     setPlayerTurn(true);
   };
 
@@ -1266,6 +1408,29 @@ const CorrectedGame = () => {
               <div className="pool-count">
                 {playerPool.length} possibilities
               </div>
+
+              {/* Live engine eval for P1 */}
+              {winProb !== null && (
+                <div className="win-prob">
+                  <span>Engine estimate:</span>
+                  <span className="prob-number">
+                    {(winProb * 100).toFixed(1)}%
+                  </span>
+                </div>
+              )}
+
+              {/* Last move quality pill */}
+              {lastMoveQuality && (
+                <div
+                  className={`move-quality move-${lastMoveQuality.category}`}
+                >
+                  <span className="move-icon">{lastMoveQuality.icon}</span>
+                  <span className="move-label">
+                    {lastMoveQuality.label}
+                  </span>
+                </div>
+              )}
+
               {selectedNumbers.length > 0 && (
                 <div className="selection-display">
                   Selected: [{selectedNumbers[0]}
@@ -1522,6 +1687,141 @@ const Styles = () => (
     .pool-number-clickable.selected { background: #3b82f6; color: white; border-color: #1e40af; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5); }
     .pool-number.computer { background: #fecaca; color: #991b1b; }
     .pool-count { color: #64748b; font-size: 0.9rem; font-weight: 600; }
+        .win-prob {
+      margin-top: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #0f172a;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .win-prob .prob-number {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+    }
+
+        .win-prob {
+      margin-top: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #0f172a;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .win-prob .prob-number {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+    }
+
+    .move-quality {
+      margin-top: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;           /* pill / circle feeling */
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .move-icon {
+      font-size: 0.9rem;
+      font-weight: 800;
+      padding: 0.2rem 0.45rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.4rem;
+    }
+    .move-label {
+      white-space: nowrap;
+    }
+
+    /* Brilliant: purple circle, three white exclamations */
+    .move-brilliant {
+      background: #f5f3ff;
+      color: #5b21b6;
+    }
+    .move-brilliant .move-icon {
+      background: #7c3aed;
+      color: #ffffff;
+      box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.6);
+    }
+
+    /* Best: light blue circle with two exclamation points */
+    .move-best {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    .move-best .move-icon {
+      background: #bfdbfe;
+      color: #1d4ed8;
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
+    }
+
+    /* Great: green star */
+    .move-great {
+      background: #ecfdf5;
+      color: #166534;
+    }
+    .move-great .move-icon {
+      background: #bbf7d0;
+      color: #166534;
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5);
+    }
+
+    /* Good: greyed green with checkmark up */
+    .move-good {
+      background: #f1f5f9;
+      color: #14532d;
+    }
+    .move-good .move-icon {
+      background: #e2f3e6;
+      color: #15803d;
+      box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.3);
+    }
+
+    /* Inaccuracy: yellow with ?! */
+    .move-inaccuracy {
+      background: #fefce8;
+      color: #92400e;
+    }
+    .move-inaccuracy .move-icon {
+      background: #fde68a;
+      color: #92400e;
+      box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.6);
+    }
+
+    /* Mistake: dark orange question mark */
+    .move-mistake {
+      background: #ffedd5;
+      color: #c2410c;
+    }
+    .move-mistake .move-icon {
+      background: #fed7aa;
+      color: #9a3412;
+      box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.6);
+    }
+
+    /* Blunder: three question marks in dark red */
+    .move-blunder {
+      background: #fee2e2;
+      color: #b91c1c;
+      box-shadow: 0 0 0 1px rgba(185, 28, 28, 0.3);
+    }
+    .move-blunder .move-icon {
+      background: #fecaca;
+      color: #7f1d1d;
+      box-shadow: 0 0 0 1px rgba(185, 28, 28, 0.8);
+    }
     .selection-display { margin-top: 1rem; padding: 0.75rem; background: #dbeafe; border-radius: 8px; color: #1e40af; font-weight: 600; text-align: center; }
     
     .player-controls { background: #dbeafe; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; }
