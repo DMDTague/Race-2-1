@@ -735,116 +735,97 @@ const StateTree = () => {
 };
 
 // ========================
-// Race-to-1 DP Strategy (Joey G–style)
+// Optimal "Death Valley" DP Strategy
 // ========================
+//
+// This DP works directly on V(n, m):
+//   V(n, m) = win probability for the player to move
+//             when their pool has size n and the opponent's
+//             pool has size m under the *turn-based* game
+//             where Death Valley exists (no auto-win at n = 1).
+
 const MAX_POOL_SIZE = 20;
 
-// memo: key -> win probability for player whose turn it is
-const raceWinMemo = new Map();
-// memo: key -> best bid size (subset size to ask about)
-const raceBestBidMemo = new Map();
+const dvValueMemo = new Map();   // key (n,m) -> V(n,m)
+const dvBestBidMemo = new Map(); // key (n,m) -> optimal bid b
 
-const raceKey = (n, m, turn) => `${n},${m},${turn}`;
+const dvKey = (n, m) => `${n},${m}`;
 
-/**
- * winProbRaceTo1(n, m, turn):
- *   n = current player's pool size
- *   m = opponent's pool size
- *   turn = 0 or 1 (we keep it for symmetry, but we only really need '1' for the computer)
- *
- * Rules:
- *   - If n == 1, current player already "wins" in race-to-1 model
- *   - If m == 1, opponent already won
- *   - Otherwise, pick subset size b (1..n-1) that maximizes
- *       P(Yes)*P(win after Yes) + P(No)*P(win after No)
- *     where after you move, roles swap (opponent's perspective).
- */
-function winProbRaceTo1(n, m, turn) {
-  const key = raceKey(n, m, turn);
-  const cached = raceWinMemo.get(key);
+function dvValue(n, m) {
+  const key = dvKey(n, m);
+  const cached = dvValueMemo.get(key);
   if (cached !== undefined) return cached;
 
-  // Terminal-like safeguards
+  // Boundary behavior in the Death Valley model
   if (n <= 1 && m > 1) {
-    raceWinMemo.set(key, 1);
-    return 1;
+    // You effectively know the answer, opponent still has work.
+    dvValueMemo.set(key, 1.0);
+    return 1.0;
   }
   if (m <= 1 && n > 1) {
-    raceWinMemo.set(key, 0);
-    return 0;
+    // Opponent effectively knows, you do not.
+    dvValueMemo.set(key, 0.0);
+    return 0.0;
   }
   if (n <= 1 && m <= 1) {
-    // Extremely rare / symmetric limit case, treat as 0.5
-    raceWinMemo.set(key, 0.5);
+    // Symmetric corner: both know, but turn order decides.
+    dvValueMemo.set(key, 0.5);
     return 0.5;
   }
 
-  let bestProb = -1;
+  let bestVal = -1;
   let bestB = 1;
 
-  // We don't bother with b = n (that would give pYes=1, pool unchanged)
+  // Never bid b = n (no information)
   for (let b = 1; b <= n - 1; b++) {
     const pYes = b / n;
     const nYes = b;
     const nNo = n - b;
 
-    let probYes;
-    if (nYes === 1) {
-      // In race-to-1 model, you auto-win on this branch
-      probYes = 1;
-    } else {
-      // After your move, roles swap: opponent now has pool m and candidate pool nYes
-      // Your win prob = 1 - opponent's win prob
-      probYes = 1 - winProbRaceTo1(m, nYes, 1 - turn);
-    }
+    // After your question, roles swap: opponent to move with pools (m, n')
+    const valYes = 1 - dvValue(m, nYes);
+    const valNo = 1 - dvValue(m, nNo);
 
-    let probNo;
-    if (nNo === 1) {
-      probNo = 1;
-    } else {
-      probNo = 1 - winProbRaceTo1(m, nNo, 1 - turn);
-    }
+    const ev = pYes * valYes + (1 - pYes) * valNo;
 
-    const totalProb = pYes * probYes + (1 - pYes) * probNo;
-
-    if (totalProb > bestProb + 1e-12) {
-      bestProb = totalProb;
+    if (ev > bestVal + 1e-12) {
+      bestVal = ev;
       bestB = b;
     }
   }
 
-  raceWinMemo.set(key, bestProb);
-  raceBestBidMemo.set(key, bestB);
-  return bestProb;
+  dvValueMemo.set(key, bestVal);
+  dvBestBidMemo.set(key, bestB);
+  return bestVal;
 }
 
-// Precompute for all n,m <= 20, both turns (0/1) in Race-to-1 world
-function precomputeRaceTo1Strategy() {
-  for (let n = 2; n <= MAX_POOL_SIZE; n++) {
-    for (let m = 2; m <= MAX_POOL_SIZE; m++) {
-      winProbRaceTo1(n, m, 0);
-      winProbRaceTo1(n, m, 1);
+function precomputeDeathValleyStrategy() {
+  for (let n = 1; n <= MAX_POOL_SIZE; n++) {
+    for (let m = 1; m <= MAX_POOL_SIZE; m++) {
+      dvValue(n, m);
     }
   }
 }
-precomputeRaceTo1Strategy();
+precomputeDeathValleyStrategy();
 
 /**
- * getRaceTo1BestBid(n, m):
- *    Returns the best subset size b according to the race-to-1 DP.
- *    If we somehow don't have a stored value, fall back to an
- *    approximate half-split.
+ * getDeathValleyBestBid(n, m):
+ *   Returns the optimal subset size b according to the
+ *   turn-based Death Valley DP.
  */
-function getRaceTo1BestBid(n, m) {
+function getDeathValleyBestBid(n, m) {
   if (n <= 1) return 1;
-  const key = raceKey(n, m, 1); // "turn = 1" we use for the computer perspective
-  const stored = raceBestBidMemo.get(key);
+  const key = dvKey(n, m);
+  const stored = dvBestBidMemo.get(key);
   if (stored !== undefined) return stored;
 
-  // conservative fallback: ordinary binary-ish split
+  // fallback if missing
   return Math.max(1, Math.floor(n / 2));
 }
-// Corrected Game Component
+
+// ========================
+// Corrected Game Component (single optimal bot)
+// ========================
 const CorrectedGame = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [playerSecret, setPlayerSecret] = useState(null);
@@ -857,33 +838,34 @@ const CorrectedGame = () => {
   const [playerTurn, setPlayerTurn] = useState(true);
 
   const startGame = () => {
-  // Number the PLAYER is trying to guess (the computer's secret)
-  const computerHiddenNumber = Math.floor(Math.random() * 20) + 1;
-  // Number the COMPUTER is trying to guess (the player's secret)
-  const playerHiddenNumber = Math.floor(Math.random() * 20) + 1;
+    // Number the PLAYER is trying to guess (the computer's secret)
+    const computerHiddenNumber = Math.floor(Math.random() * 20) + 1;
+    // Number the COMPUTER is trying to guess (the player's secret)
+    const playerHiddenNumber = Math.floor(Math.random() * 20) + 1;
 
-  setPlayerSecret(computerHiddenNumber);   // you are guessing this
-  setComputerSecret(playerHiddenNumber);   // computer is guessing this
+    setPlayerSecret(computerHiddenNumber);   // you are guessing this
+    setComputerSecret(playerHiddenNumber);   // computer is guessing this
 
-  const fullPool = Array.from({ length: 20 }, (_, i) => i + 1);
+    const fullPool = Array.from({ length: 20 }, (_, i) => i + 1);
 
-  setPlayerPool(fullPool);
-  setComputerPool(fullPool);
-  setSelectedNumbers([]);
-  setGameLog([
-    "🎮 Game started! Each side has secretly chosen a number between 1 and 20.",
-  ]);
-  setWinner(null);
-  setGameStarted(true);
-  setPlayerTurn(true);
-};
+    setPlayerPool(fullPool);
+    setComputerPool(fullPool);
+    setSelectedNumbers([]);
+    setGameLog([
+      "🎮 Game started! Each side has secretly chosen a number between 1 and 20.",
+      "🤖 Bot: Optimal Death Valley DP (turn-based V(n,m) strategy).",
+    ]);
+    setWinner(null);
+    setGameStarted(true);
+    setPlayerTurn(true);
+  };
 
   const handleNumberClick = (num) => {
     if (!playerTurn || winner) return;
     
     if (selectedNumbers.includes(num)) {
       // Deselect if already selected
-      setSelectedNumbers(selectedNumbers.filter(n => n !== num));
+      setSelectedNumbers(selectedNumbers.filter((n) => n !== num));
     } else if (selectedNumbers.length < 2) {
       // Select if less than 2 numbers selected
       setSelectedNumbers([...selectedNumbers, num].sort((a, b) => a - b));
@@ -897,18 +879,25 @@ const CorrectedGame = () => {
     if (!playerTurn || winner || selectedNumbers.length === 0) return;
 
     const min = selectedNumbers[0];
-    const max = selectedNumbers.length === 2 ? selectedNumbers[1] : selectedNumbers[0];
+    const max =
+      selectedNumbers.length === 2 ? selectedNumbers[1] : selectedNumbers[0];
     
     // Check if this is an exact guess (min === max)
     if (min === max) {
       const guess = min;
       if (guess === playerSecret) {
-        setWinner('player');
-        setGameLog(prev => [...prev, `👤 You asked: [${guess}, ${guess}]? Answer: YES ✅ CORRECT! You win!`]);
+        setWinner("player");
+        setGameLog((prev) => [
+          ...prev,
+          `👤 You asked: [${guess}, ${guess}]? Answer: YES ✅ CORRECT! You win!`,
+        ]);
         return;
       } else {
-        setGameLog(prev => [...prev, `👤 You asked: [${guess}, ${guess}]? Answer: NO`]);
-        const newPlayerPool = playerPool.filter(n => n !== guess);
+        setGameLog((prev) => [
+          ...prev,
+          `👤 You asked: [${guess}, ${guess}]? Answer: NO`,
+        ]);
+        const newPlayerPool = playerPool.filter((n) => n !== guess);
         setPlayerPool(newPlayerPool);
         setSelectedNumbers([]);
         setPlayerTurn(false);
@@ -919,110 +908,83 @@ const CorrectedGame = () => {
     
     // Range guess
     const inRange = min <= playerSecret && playerSecret <= max;
-    const newPlayerPool = inRange 
-      ? playerPool.filter(n => n >= min && n <= max)
-      : playerPool.filter(n => n < min || n > max);
+    const newPlayerPool = inRange
+      ? playerPool.filter((n) => n >= min && n <= max)
+      : playerPool.filter((n) => n < min || n > max);
     
     setPlayerPool(newPlayerPool);
     
-    const logMsg = `👤 You asked: [${min}, ${max}]? Answer: ${inRange ? 'YES' : 'NO'} (${newPlayerPool.length} remaining)`;
-    setGameLog(prev => [...prev, logMsg]);
+    const logMsg = `👤 You asked: [${min}, ${max}]? Answer: ${
+      inRange ? "YES" : "NO"
+    } (${newPlayerPool.length} remaining)`;
+    setGameLog((prev) => [...prev, logMsg]);
     
     setSelectedNumbers([]);
     setPlayerTurn(false);
     setTimeout(() => computerTurn(), 1000);
   };
 
-  // Optimal bid approximation - mimics Nica's b*(n,m) strategy
-  const getOptimalBidSize = (n, m) => {
-    // Simplified approximation of optimal bid size based on pool sizes
-    // This approximates the dynamic programming solution without full computation
-    if (n === 1) return 1; // Must make exact guess
-    if (n === 2) return 1; // Optimal to split evenly
-    if (n <= 4) return Math.floor(n / 2);
-    
-    // For larger pools, use a more aggressive strategy when ahead
-    const ratio = n / Math.max(m, 1);
-    let bidSize;
-    
-    if (ratio < 0.5) {
-      // We're behind - be more aggressive
-      bidSize = Math.ceil(n * 0.6);
-    } else if (ratio > 2) {
-      // We're ahead - be more conservative
-      bidSize = Math.floor(n * 0.4);
-    } else {
-      // Roughly equal - standard binary approach
-      bidSize = Math.floor(n / 2);
-    }
-    
-    // Safety bounds: bidSize must be in [1, n]
-    return Math.max(1, Math.min(bidSize, n));
-  };
-
   const computerTurn = () => {
-  if (winner) return;
+    if (winner) return;
 
-  // If computer already has a single candidate, we are in Death Valley resolution:
-  // it "knows" the answer and must now declare exactly.
-  if (computerPool.length === 1) {
-    const guess = computerPool[0];
-    if (guess === computerSecret) {
-      setWinner("computer");
-      setGameLog((prev) => [
-        ...prev,
-        `🤖 Computer declared ${guess} – CORRECT! Computer wins!`,
-      ]);
-    } else {
-      // In your current rules, a wrong guess just removes the candidate,
-      // not an instant loss (Mercy-like). We keep that behavior.
-      setGameLog((prev) => [
-        ...prev,
-        `🤖 Computer declared ${guess} – WRONG.`,
-      ]);
-      // Technically this path is almost never reached if pool length is 1,
-      // but we include it for completeness.
-      setPlayerTurn(true);
+    // If computer already has a single candidate, we are in Death Valley resolution:
+    // it "knows" the answer and must now declare exactly.
+    if (computerPool.length === 1) {
+      const guess = computerPool[0];
+      if (guess === computerSecret) {
+        setWinner("computer");
+        setGameLog((prev) => [
+          ...prev,
+          `🤖 Computer declared ${guess} – CORRECT! Computer wins!`,
+        ]);
+      } else {
+        // In this corrected ruleset, a wrong guess just removes that candidate
+        // (Mercy-style continuation), not an instant loss.
+        setGameLog((prev) => [
+          ...prev,
+          `🤖 Computer declared ${guess} – WRONG.`,
+        ]);
+        setPlayerTurn(true);
+      }
+      return;
     }
-    return;
-  }
 
-  const n = computerPool.length;
-  const m = playerPool.length;
+    const n = computerPool.length;
+    const m = playerPool.length;
 
-  // Joey G / race-to-1 style optimal subset size
-  const bidSize = getRaceTo1BestBid(n, m);
+    // Optimal Death Valley bid from the DP
+    const bidSize = getDeathValleyBestBid(n, m);
 
-  const sortedPool = [...computerPool].sort((a, b) => a - b);
-  const min = sortedPool[0];
-  const max = sortedPool[Math.min(bidSize - 1, sortedPool.length - 1)];
+    const sortedPool = [...computerPool].sort((a, b) => a - b);
+    const min = sortedPool[0];
+    const max = sortedPool[Math.min(bidSize - 1, sortedPool.length - 1)];
 
-  const inRange = min <= computerSecret && computerSecret <= max;
+    const inRange = min <= computerSecret && computerSecret <= max;
 
-  const newComputerPool = inRange
-    ? computerPool.filter((num) => num >= min && num <= max)
-    : computerPool.filter((num) => num < min || num > max);
+    const newComputerPool = inRange
+      ? computerPool.filter((num) => num >= min && num <= max)
+      : computerPool.filter((num) => num < min || num > max);
 
-  setComputerPool(newComputerPool);
+    setComputerPool(newComputerPool);
 
-  const logMsg = `🤖 Computer asked: [${min}, ${max}]? Answer: ${
-    inRange ? "YES" : "NO"
-  } (${newComputerPool.length} remaining)`;
-  setGameLog((prev) => [...prev, logMsg]);
+    const logMsg = `🤖 [ODV] asked: [${min}, ${max}]? Answer: ${
+      inRange ? "YES" : "NO"
+    } (${newComputerPool.length} remaining)`;
+    setGameLog((prev) => [...prev, logMsg]);
 
-  // Here is where your model diverges from the race-to-1 DP:
-  // In the DP, hitting length 1 is an immediate win; in your game
-  // it's a Death Valley knowledge state: "knows the answer but must wait."
-  if (newComputerPool.length === 1) {
-    setGameLog((prev) => [
-      ...prev,
-      "🤖 Computer now knows the answer, but must declare on a future turn (Death Valley).",
-    ]);
-  }
+    // In the corrected, turn-based game this is a Death Valley knowledge state:
+    // the computer may know the answer (pool size 1) but must wait for its next
+    // turn to declare.
+    if (newComputerPool.length === 1) {
+      setGameLog((prev) => [
+        ...prev,
+        "🤖 Computer now knows the answer, but must declare on a future turn (Death Valley).",
+      ]);
+    }
 
-  // Hand control back to the human player either way
-  setPlayerTurn(true);
-};
+    // Hand control back to the human player either way
+    setPlayerTurn(true);
+  };
 
   return (
     <div className="corrected-game-container">
@@ -1034,26 +996,59 @@ const CorrectedGame = () => {
           <div className="key-difference">
             <h4>Key Difference</h4>
             <ul>
-              <li>✅ Players must make an <strong>exact guess</strong> to win</li>
+              <li>
+                ✅ Players must make an <strong>exact guess</strong> to win
+              </li>
               <li>✅ Death Valley state is preserved</li>
               <li>✅ Both players get equal turns</li>
               <li>❌ No auto-win when pool reaches 1</li>
             </ul>
-            <div style={{marginTop: '1.5rem', padding: '1rem', background: '#e0e7ff', borderRadius: '8px', fontSize: '0.95rem'}}>
-              <strong style={{color: '#1e40af'}}>How to Play:</strong>
-              <p style={{color: '#1e40af', marginTop: '0.5rem', marginBottom: 0}}>
-                Click numbers from your possibilities to select your guess range. Click one number 
-                for an exact guess, or two numbers to ask about a range. You can only select from 
-                numbers currently in your pool.
+
+            <div
+              style={{
+                marginTop: "1.5rem",
+                padding: "1rem",
+                background: "#e0e7ff",
+                borderRadius: "8px",
+                fontSize: "0.95rem",
+              }}
+            >
+              <strong style={{ color: "#1e40af" }}>How to Play:</strong>
+              <p
+                style={{
+                  color: "#1e40af",
+                  marginTop: "0.5rem",
+                  marginBottom: 0,
+                }}
+              >
+                Click numbers from your possibilities to select your guess range.
+                Click one number for an exact guess, or two numbers to ask about
+                a range. You can only select from numbers currently in your pool.
               </p>
             </div>
-            <div style={{marginTop: '1rem', padding: '1rem', background: '#e0e7ff', borderRadius: '8px', fontSize: '0.95rem'}}>
-              <strong style={{color: '#1e40af'}}>Computer Strategy:</strong>
-              <p style={{color: '#1e40af', marginTop: '0.5rem', marginBottom: 0}}>
-                The computer opponent uses an <strong>optimal bidding strategy</strong> inspired by
-  Joey G's <code>GuessWhoBestMove</code> implementation and Dr. Nica's dynamic programming approach.
-  It precomputes the best subset size for each (n, m) state in a Race-to-1 model,
-  then uses that question policy inside this corrected, turn-based Death Valley game.
+
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "1rem",
+                background: "#e0e7ff",
+                borderRadius: "8px",
+                fontSize: "0.95rem",
+              }}
+            >
+              <strong style={{ color: "#1e40af" }}>Computer Strategy:</strong>
+              <p
+                style={{
+                  color: "#1e40af",
+                  marginTop: "0.5rem",
+                  marginBottom: 0,
+                }}
+              >
+                The computer uses a single{" "}
+                <strong>Optimal Death Valley DP</strong> strategy. It precomputes
+                the win value <code>V(n, m)</code> and chooses the bid size{" "}
+                <code>b*(n, m)</code> that maximizes its long-run win probability
+                under the corrected, turn-based rules.
               </p>
             </div>
           </div>
@@ -1064,20 +1059,28 @@ const CorrectedGame = () => {
             <div className="player-status">
               <h4>Your Status</h4>
               <div className="pool-display-interactive">
-                {playerPool.map(n => (
-                  <span 
-                    key={n} 
-                    className={`pool-number-clickable ${selectedNumbers.includes(n) ? 'selected' : ''}`}
+                {playerPool.map((n) => (
+                  <span
+                    key={n}
+                    className={`pool-number-clickable ${
+                      selectedNumbers.includes(n) ? "selected" : ""
+                    }`}
                     onClick={() => handleNumberClick(n)}
                   >
                     {n}
                   </span>
                 ))}
               </div>
-              <div className="pool-count">{playerPool.length} possibilities</div>
+              <div className="pool-count">
+                {playerPool.length} possibilities
+              </div>
               {selectedNumbers.length > 0 && (
                 <div className="selection-display">
-                  Selected: [{selectedNumbers[0]}{selectedNumbers.length === 2 ? `, ${selectedNumbers[1]}` : ''}]
+                  Selected: [{selectedNumbers[0]}
+                  {selectedNumbers.length === 2
+                    ? `, ${selectedNumbers[1]}`
+                    : ""}
+                  ]
                 </div>
               )}
             </div>
@@ -1085,11 +1088,15 @@ const CorrectedGame = () => {
             <div className="computer-status">
               <h4>Computer Status</h4>
               <div className="pool-display">
-                {computerPool.map(n => (
-                  <span key={n} className="pool-number computer">{n}</span>
+                {computerPool.map((n) => (
+                  <span key={n} className="pool-number computer">
+                    {n}
+                  </span>
                 ))}
               </div>
-              <div className="pool-count">{computerPool.length} possibilities</div>
+              <div className="pool-count">
+                {computerPool.length} possibilities
+              </div>
             </div>
           </div>
 
@@ -1097,18 +1104,26 @@ const CorrectedGame = () => {
             <div className="player-controls">
               <h4>Your Turn - Select Numbers to Guess</h4>
               <p className="instruction-text">
-                Click numbers from your possibilities above to select a range. 
-                Click one number for an exact guess, or two numbers to ask about a range.
+                Click numbers from your possibilities above to select a range.
+                Click one number for an exact guess, or two numbers to ask about
+                a range.
               </p>
-              <button 
-                onClick={makeRangeGuess} 
+              <button
+                onClick={makeRangeGuess}
                 className="guess-btn"
                 disabled={selectedNumbers.length === 0}
-                style={{opacity: selectedNumbers.length === 0 ? 0.5 : 1, cursor: selectedNumbers.length === 0 ? 'not-allowed' : 'pointer'}}
+                style={{
+                  opacity: selectedNumbers.length === 0 ? 0.5 : 1,
+                  cursor:
+                    selectedNumbers.length === 0 ? "not-allowed" : "pointer",
+                }}
               >
-                {selectedNumbers.length === 0 && 'Select numbers to make a guess'}
-                {selectedNumbers.length === 1 && `Ask: Is your number ${selectedNumbers[0]}?`}
-                {selectedNumbers.length === 2 && `Ask: Is your number between ${selectedNumbers[0]} and ${selectedNumbers[1]}?`}
+                {selectedNumbers.length === 0 &&
+                  "Select numbers to make a guess"}
+                {selectedNumbers.length === 1 &&
+                  `Ask: Is your number ${selectedNumbers[0]}?`}
+                {selectedNumbers.length === 2 &&
+                  `Ask: Is your number between ${selectedNumbers[0]} and ${selectedNumbers[1]}?`}
               </button>
             </div>
           )}
@@ -1122,7 +1137,7 @@ const CorrectedGame = () => {
 
           {winner && (
             <div className={`game-over ${winner}`}>
-              <h3>{winner === 'player' ? '🎉 You Won!' : '💻 Computer Won!'}</h3>
+              <h3>{winner === "player" ? "🎉 You Won!" : "💻 Computer Won!"}</h3>
               <button onClick={startGame} className="play-again-btn">
                 Play Again
               </button>
@@ -1133,7 +1148,9 @@ const CorrectedGame = () => {
             <h4>Game Log</h4>
             <div className="log-entries">
               {gameLog.map((entry, i) => (
-                <div key={i} className="log-entry">{entry}</div>
+                <div key={i} className="log-entry">
+                  {entry}
+                </div>
               ))}
             </div>
           </div>
