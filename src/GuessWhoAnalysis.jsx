@@ -787,10 +787,15 @@ function getOptimalBotAction(n, m) {
 // Player 1 (human) win probability from current state
 function getPlayerPerspectiveWinProb(nPlayer, nComputer, isPlayerTurn) {
   if (nPlayer <= 0 || nComputer <= 0) return 0.5;
+
+  // dvValue(n, m) = win prob for *player to move* with pool sizes (n, m)
   if (isPlayerTurn) {
+    // Your turn → just V(nPlayer, nComputer)
     return dvValue(nPlayer, nComputer);
+  } else {
+    // Bot's turn → bot is "player to move", so your chance is the complement
+    return 1 - dvValue(nComputer, nPlayer);
   }
-  return 1 - dvValue(nComputer, nPlayer);
 }
 
 // Move quality evaluation
