@@ -1,32 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronRight, RotateCcw, Mail, ExternalLink } from 'lucide-react';
+// src/GuessWhoAnalysis.jsx
+import React, { useState, useEffect } from "react";
+import { ChevronRight, RotateCcw, Mail, ExternalLink } from "lucide-react";
 
+// =======================
+// Main Analysis Page
+// =======================
 export default function GuessWhoAnalysis() {
   const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
       const scrolled = window.scrollY;
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      setScrollProgress((scrolled / maxScroll) * 100);
+      const maxScroll =
+        document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(maxScroll > 0 ? (scrolled / maxScroll) * 100 : 0);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <div className="analysis-container">
-      <div className="scroll-progress" style={{width: `${scrollProgress}%`}} />
+      <div
+        className="scroll-progress"
+        style={{ width: `${scrollProgress}%` }}
+      />
 
-      {/* Hero Section */}
+      {/* Hero */}
       <header className="hero">
         <div className="hero-content">
           <h1>Race to 1 vs. Real Guess Who</h1>
-          <h2>A Code-Level Audit of Dr. Mihai Nica's Optimal Strategy Simulation</h2>
+          <h2>A Code-Level Audit of Dr. Mihai Nica&apos;s Optimal Strategy Simulation</h2>
           <p className="subtitle">
-            How Dr. Mihai Nica's Python implementation introduced a Race-to-1 win condition 
-            that diverges from the actual rules of Guess Who—and how I uncovered the discrepancy, 
-            formalized it, and built a corrected model that reflects the real, turn-based game.
+            How Dr. Mihai Nica&apos;s Python implementation introduced a Race-to-1
+            win condition that diverges from the actual rules of Guess Who—and how
+            I uncovered the discrepancy, formalized it, and built a corrected
+            model that reflects the real, turn-based game.
           </p>
         </div>
       </header>
@@ -36,16 +45,20 @@ export default function GuessWhoAnalysis() {
         <div className="content">
           <h2>The Viral Strategy</h2>
           <p>
-            On November 17, 2015, Mark Rober—former NASA engineer, Apple product designer, and now 
-            the 37th most-subscribed YouTuber with over 71 million followers—released a massively 
-            popular video arguing that he had found a dominant strategy for Guess Who.
+            On November 17, 2015, Mark Rober—former NASA engineer, Apple product
+            designer, and now a massively popular YouTuber—released a video claiming
+            to have found a dominant strategy for Guess Who.
           </p>
-          
+
           <div className="video-card">
-            <a href="https://youtu.be/FRlbNOno5VA?si=o6gN1jFEMXZcqEa-" target="_blank" rel="noopener noreferrer">
+            <a
+              href="https://youtu.be/FRlbNOno5VA?si=o6gN1jFEMXZcqEa-"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <div className="video-icon">📺</div>
               <div className="video-info">
-                <div className="video-title">Mark Rober's Original Video</div>
+                <div className="video-title">Mark Rober&apos;s Original Video</div>
                 <div className="video-date">November 17, 2015</div>
               </div>
               <ExternalLink size={20} />
@@ -53,8 +66,9 @@ export default function GuessWhoAnalysis() {
           </div>
 
           <p>
-            The idea was simple but powerful: ask broad, binary-elimination questions that remove 
-            half the candidates per turn, rather than narrow questions about specific physical features.
+            The idea was simple: play Guess Who like a binary search. Ask questions
+            that cut the space of faces in half instead of narrow, feature-based
+            questions.
           </p>
 
           <div className="stat-grid">
@@ -73,8 +87,8 @@ export default function GuessWhoAnalysis() {
           </div>
 
           <p>
-            Together with the IShowSpeed short, the video accumulated over 155 million combined views, 
-            turning binary search into the publicly accepted strategy for Guess Who.
+            Together with the IShowSpeed short, Rober&apos;s framing effectively made
+            binary search the &quot;accepted&quot; public strategy for Guess Who.
           </p>
         </div>
       </section>
@@ -83,14 +97,16 @@ export default function GuessWhoAnalysis() {
       <section className="section alt">
         <div className="content">
           <h2>Enter Dr. Mihai Nica</h2>
-          
           <p>
-            Just months before Rober's video, Dr. Mihai Nica published the first version of his 
-            research paper:
+            Months before Rober&apos;s video, Dr. Mihai Nica released his paper
+            <em> &quot;Optimal Strategy in Guess Who?: Beyond Binary Search&quot;</em>,
+            showing that a dynamic-programming strategy can outperform naïve binary search.
           </p>
 
           <div className="paper-card">
-            <div className="paper-title">"Optimal Strategy in 'Guess Who?': Beyond Binary Search"</div>
+            <div className="paper-title">
+              &quot;Optimal Strategy in &apos;Guess Who?&apos;: Beyond Binary Search&quot;
+            </div>
             <div className="paper-versions">
               <span>Version 1: September 8, 2015</span>
               <span>Version 2: January 16, 2016</span>
@@ -98,16 +114,19 @@ export default function GuessWhoAnalysis() {
           </div>
 
           <p>
-            Nearly a decade later, on November 21, 2025, Dr. Nica released a full YouTube lecture 
-            revisiting this research and illustrating how his dynamic-programming method identifies 
-            an optimal strategy that outperforms naïve binary search.
+            In November 2025 he revisited the work in a YouTube lecture and published
+            a marimo-based &quot;Guess Who? Simulator&quot;—a number abstraction of the game.
           </p>
 
           <div className="video-card">
-            <a href="https://www.youtube.com/watch?v=_3RNB8eOSx0" target="_blank" rel="noopener noreferrer">
+            <a
+              href="https://www.youtube.com/watch?v=_3RNB8eOSx0"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <div className="video-icon">📺</div>
               <div className="video-info">
-                <div className="video-title">Dr. Mihai Nica's Lecture</div>
+                <div className="video-title">Dr. Mihai Nica&apos;s Lecture</div>
                 <div className="video-date">November 21, 2025</div>
               </div>
               <ExternalLink size={20} />
@@ -115,119 +134,106 @@ export default function GuessWhoAnalysis() {
           </div>
 
           <p>
-            To accompany the lecture, he released an interactive online tool titled 
-            "Guess Who? Simulator" on marimo.app. Despite the name, the simulator does not use 
-            faces or features. Instead, it uses a number-based abstraction.
+            The simulator uses numbers instead of faces. You ask interval questions
+            [a,b]? and get YES/NO answers, shrinking your candidate pool.
           </p>
 
           <div className="callout">
-            <strong>The Mathematical Model:</strong>
+            <strong>The Mathematical Model</strong>
             <ul>
-              <li>Each player secretly chooses a number (1–N)</li>
-              <li>You "ask questions" using a slider that defines an interval [a,b]</li>
-              <li>The simulator responds YES/NO based on whether the opponent's number lies in that range</li>
+              <li>Each player secretly chooses a number in {{ }["{1,…,N}"]}</li>
+              <li>Moves are questions of the form [a,b]?</li>
+              <li>Answers are YES or NO, and each answer shrinks the pool</li>
             </ul>
           </div>
 
           <p className="emphasis">
-            This is a mathematical model inspired by Guess Who, not a literal implementation 
-            of the real board game. And this modeling choice is what creates the discrepancy.
+            This is not the literal physical Guess Who ruleset—this modeling choice
+            is where the Race-to-1 vs turn-based discrepancy appears.
           </p>
         </div>
       </section>
 
-      {/* The Discovery */}
+      {/* Discovery */}
       <section className="section">
         <div className="content">
           <h2>The Discovery</h2>
-          
-          <p>
-            But when I started playing Nica's simulator, I noticed something unmistakably wrong:
-          </p>
-
+          <p>When I started playing with Nica&apos;s simulator, I noticed:</p>
           <ul className="discovery-list">
-            <li>I was winning earlier than I should</li>
-            <li>The computer was not taking turns it should have been allowed to take</li>
-            <li>The game declared me the winner at moments when I had not actually guessed the number—only reduced my candidate pool to one</li>
+            <li>It occasionally declared wins too early</li>
+            <li>The opponent sometimes lost the right to a final turn</li>
+            <li>
+              I could &quot;win&quot; by logically deducing the number (n=1) even
+              though I had never declared it
+            </li>
           </ul>
 
           <p>
-            Curious whether anyone else noticed, I searched the comments on Nica's lecture. 
-            One comment by @madks13 stood out, proposing a checkbox interface instead of a slider. 
-            Yet none of the comments mentioned the issue I had discovered.
+            In real Guess Who, narrowing to one candidate doesn&apos;t win. You still
+            must spend a turn declaring the guess—and your opponent gets a last shot
+            in between.
           </p>
 
           <p className="emphasis">
-            So I decided to investigate further.
+            That missing &quot;you know but must pass&quot; state is Death Valley.
           </p>
         </div>
       </section>
 
-      {/* Formal Notation */}
+      {/* Formal notation (kept short) */}
       <section className="section alt">
         <div className="content">
-          <h2>Formal Notation & Game Structure</h2>
-          
+          <h2>Formal Game Structure</h2>
+
           <div className="math-block-container">
-            <h3>Game State</h3>
-            <p>Each player holds a set of possible opponent values:</p>
+            <h3>State</h3>
+            <p>Each player tracks a candidate set for the opponent:</p>
             <ul>
-              <li>S₁: P1's remaining possibilities</li>
-              <li>S₂: P2's remaining possibilities</li>
+              <li>S₁: P1&apos;s remaining candidates, |S₁| = n</li>
+              <li>S₂: P2&apos;s remaining candidates, |S₂| = m</li>
             </ul>
-            <p>Their sizes are:</p>
-            <ul>
-              <li>n = |S₁|</li>
-              <li>m = |S₂|</li>
-            </ul>
-            <p>At the start of a 1–20 game:</p>
             <div className="formula-display">
-              S₁ = S₂ = {'{1, …, 20}'}, n = m = 20
+              Start of 1–20 game: S₁ = S₂ = {'{1, …, 20}'}, n = m = 20
             </div>
           </div>
 
           <div className="math-block-container">
-            <h3>Question Format</h3>
-            <p>A question is written as [a,b]? meaning:</p>
-            <p className="quote">"Is your secret number between a and b?"</p>
-            <p>Each half-move is notated:</p>
-            <div className="formula-display">
-              [a,b]? (A; n → n')
-            </div>
-            <p>where A ∈ {'{Y, N}'} and n → n' indicates P1's pool update.</p>
+            <h3>Questions</h3>
+            <p>A move is an interval question:</p>
+            <p className="quote">&quot;Is your number between a and b?&quot;</p>
+            <p>We write a half-move as:</p>
+            <div className="formula-display">[a,b]? (A; n → n&apos;)</div>
+            <p>
+              where A ∈ {'{Y,N}'} and n → n&apos; describes how your pool changes
+              after the answer.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Example Game Playback */}
+      {/* Example playback showing Race-to-1 issue */}
       <section className="section">
         <div className="content">
-          <h2>Example Game: Exposing the Discrepancy</h2>
+          <h2>Example Game: Where the Race-to-1 Model Breaks</h2>
           <p>
-            Watch as the game progresses move by move. Pay special attention to Move 4, 
-            where Nica's simulator declares P1 the winner immediately—without allowing P2 
-            their final turn.
+            In the sequence below, Nica&apos;s simulator declares P1 the winner
+            as soon as their pool reaches size 1—without giving P2 their final
+            turn that exists in the real game.
           </p>
           <GamePlayback />
-          
+
           <div className="analysis-box">
             <h3>The Critical Moment</h3>
             <p>
-              After Move 4, you ask: "Is your number 4?" Answer: NO. 
-              Thus your pool becomes {'{5}'} → n=1.
+              After asking &quot;Is your number 4?&quot; and getting NO, your pool
+              is {{ }["{5}"]} so n=1. The simulator instantly ends the game in your
+              favor.
             </p>
             <p className="emphasis">
-              The simulator declares you the winner immediately. P2 does not get to take their turn.
+              In the real board game, that is exactly the Death Valley state:
+              you know the answer but must pass the turn. P2 still gets a final
+              guess and can steal the win.
             </p>
-            <p>
-              But according to the rules of real Guess Who:
-            </p>
-            <ul>
-              <li>You have inferred the correct answer</li>
-              <li>You must still wait one turn</li>
-              <li>P2 must be allowed to guess</li>
-              <li>Only after P2 misses can you declare "You are 5."</li>
-            </ul>
           </div>
         </div>
       </section>
@@ -235,348 +241,157 @@ export default function GuessWhoAnalysis() {
       {/* Death Valley */}
       <section className="section death-valley-section">
         <div className="content">
-          <h2>Death Valley: The Dangerous Missing State</h2>
-          
-          <p>
-            In Dr. Nica's abstract model, the moment your pool size reaches 1, the game ends:
-          </p>
-          
-          <div className="formula-display">
-            n = 1 ⇒ P1 wins immediately
-          </div>
+          <h2>Death Valley: Knowing But Not Winning</h2>
 
           <p>
-            This eliminates one of the most important states in real Guess Who.
+            In Nica&apos;s Race-to-1 abstraction, reaching n = 1 is an absorbing
+            win: the game ends the moment you deduce the opponent&apos;s number.
+          </p>
+
+          <div className="formula-display">n = 1 ⇒ immediate win (Race-to-1)</div>
+
+          <p>
+            In the real game, the state n = 1 while it&apos;s still your opponent&apos;s
+            turn is a dangerous limbo: Death Valley.
           </p>
 
           <DeathValleyViz />
 
           <div className="definition-box">
-            <h3>What Is Death Valley?</h3>
+            <h3>Definition</h3>
             <p>
-              In real Guess Who, the transition n = 2 → n = 1—especially when 
-              the interval [a,b]? returns NO—creates a special state:
-            </p>
-            <p className="emphasis">
-              You know the answer but you cannot act yet.
-            </p>
-            <p>
-              You must pass your turn, giving your opponent a final opportunity to win.
-            </p>
-            <p>
-              This creates the strategic danger zone I call: 
-              <strong> Death Valley</strong> — the one-turn vulnerability where full information 
-              does not equal victory.
+              <strong>Death Valley</strong> is the state where you have a single
+              remaining candidate but must pass the turn. You know the answer,
+              but you can still lose before you get to say it.
             </p>
           </div>
 
           <div className="impact-grid">
-            <h3>Why Death Valley Matters</h3>
+            <h3>Why It Matters</h3>
             <div className="impact-item">
               <div className="impact-icon">❌</div>
-              <div className="impact-text">Makes aggressive, unbalanced guesses artificially safe</div>
+              <div className="impact-text">
+                Aggressive guesses that drop you into n=1 can be dangerous, not
+                automatically winning.
+              </div>
             </div>
             <div className="impact-item">
               <div className="impact-icon">⚡</div>
-              <div className="impact-text">Lets strategies "win early" without declaring</div>
+              <div className="impact-text">
+                Race-to-1 &quot;wins early&quot; by treating n=1 as a victory,
+                skipping the opponent&apos;s last chance.
+              </div>
             </div>
             <div className="impact-item">
               <div className="impact-icon">⏱️</div>
-              <div className="impact-text">Misrepresents how timing and turn-order interact</div>
+              <div className="impact-text">
+                Real Guess Who is about timing and turn order, not just deduction.
+              </div>
             </div>
-            <div className="impact-item">
-              <div className="impact-icon">📈</div>
-              <div className="impact-text">Overstates the value of Nica's aggressive optimal strategy</div>
-            </div>
-            <div className="impact-item">
-              <div className="impact-icon">🛡️</div>
-              <div className="impact-text">Undermines defensive counterplay that exists in real Guess Who</div>
-            </div>
-          </div>
-
-          <div className="contrast-box">
-            <h3>In the real game:</h3>
-            <ul>
-              <li>Going from n=2 to n=1 can be dangerous</li>
-              <li>Timing and survival matter</li>
-              <li>Binary search behaves differently</li>
-              <li>Optimal play must account for turn structure</li>
-            </ul>
-            <p className="emphasis">The simulator—and the abstraction it implements—does not.</p>
           </div>
         </div>
       </section>
 
-      {/* State Tree Comparison */}
-<section className="section">
-  <div className="content">
-    <h2>Turn Structure Comparison</h2>
-    <p>
-      Here's a side-by-side comparison of how the same game plays out in Nica's Race-to-1 
-      model versus real Guess Who:
-    </p>
-    <StateTree />
-  </div>
-</section>
-            {/* Optimal DP vs Race-to-1 Analysis */}
+      {/* Turn structure comparison */}
+      <section className="section">
+        <div className="content">
+          <h2>Turn Structure: Race-to-1 vs Real Guess Who</h2>
+          <p>
+            The same sequence of questions leads to different outcomes depending
+            on whether n=1 is treated as &quot;win now&quot; or &quot;wait and
+            survive.&quot;
+          </p>
+          <StateTree />
+        </div>
+      </section>
+
+      {/* DP / Optimal strategy summary */}
       <section className="section alt">
         <div className="content">
-          <h2>The Optimal Death Valley Bot vs the Race-to-1 Model</h2>
-
-          <p>
-            After rebuilding the game with the correct turn-based rules and the Death Valley
-            state preserved, I defined a new value function{" "}
-            <code>V(n, m)</code> that matches the actual mathematical structure of this
-            corrected game.
-          </p>
+          <h2>Optimal Death Valley Strategy V(n,m)</h2>
 
           <div className="math-block-container">
-            <h3>The Value Function V(n, m)</h3>
+            <h3>The Value Function</h3>
             <p>
-              Here <code>V(n, m)</code> means:
-            </p>
-            <p className="quote">
-              "The win probability for the player whose turn it is, when their candidate
-              pool has size <code>n</code> and the opponent's pool has size <code>m</code>,
-              under the real turn-based rules with Death Valley (no auto-win at n = 1)."
-            </p>
-            <p>
-              On the 1–20 board, the starting state is{" "}
-              <code>V(20, 20)</code>. Solving the dynamic program gives:
+              I define V(n,m) as the win probability for the player to move when
+              their pool has size n and the opponent&apos;s pool has size m,
+              under the *turn-based* rules with Death Valley (no auto-win at
+              n=1, must still guess).
             </p>
             <div className="formula-display">
-              <code>V(20, 20) ≈ 0.63</code>
+              V(20,20) ≈ 0.63
               <br />
-              <code>b*(20, 20) = 8</code>
+              b*(20,20) = 8
             </div>
             <p>
-              So in the corrected game, the optimal player to move wins about 63% of the
-              time, and the first question is not a perfect half-split. Instead, the
-              optimal strategy asks about 8 numbers, not 10:
-            </p>
-            <p className="quote">
-              "Is your number in the first 8 candidates?"
-            </p>
-            <p>
-              The bid function <code>b*(n, m)</code> is the subset size that maximizes{" "}
-              <code>V(n, m)</code> at each state. It is computed by the DP via:
-            </p>
-            <div className="formula-display">
-              <code>
-                V(n, m) = max<sub>1 ≤ b ≤ n−1</sub> [
-                (b/n) · (1 − V(m, b)) + (1 − b/n) · (1 − V(m, n − b))]
-              </code>
-            </div>
-            <p>
-              After each YES/NO answer, roles swap. Your win chance this turn is{" "}
-              <code>1 − V(m, n')</code> because the opponent becomes the player to move
-              in the next state. Crucially, there is no special rule that says
-              "if n' = 1, you instantly win."
+              The optimal first question is not a perfect half-split;
+              it&apos;s &quot;Is your number in the first 8 candidates?&quot;
             </p>
           </div>
 
           <div className="math-block-container">
-            <h3>Race-to-1 vs Turn-Based Death Valley</h3>
+            <h3>DP Recurrence</h3>
             <p>
-              In Dr. Nica's marimo code (and in Rober's mental model), the abstraction is
-              different. It implicitly works with a "Race-to-1" value function{" "}
-              <code>W(n, m)</code> where:
-            </p>
-            <ul>
-              <li>
-                Hitting <code>n = 1</code> is treated as an absorbing win:{" "}
-                <code>W(1, m) = 1</code> when <code>m &gt; 1</code>.
-              </li>
-              <li>
-                Hitting <code>m = 1</code> for the opponent is treated as an absorbing
-                loss: <code>W(n, 1) = 0</code> when <code>n &gt; 1</code>.
-              </li>
-              <li>
-                Any branch that drives your pool to size 1 is given value 1 immediately.
-              </li>
-            </ul>
-            <p className="emphasis">
-              That model optimizes "who reaches a single remaining candidate first,"
-              not "who actually wins in a turn-based game where the opponent still
-              gets a final guess."
-            </p>
-            <p>
-              In other words, <code>W(n, m)</code> is a pure deduction race.{" "}
-              <code>V(n, m)</code> is a turn-based game with Death Valley: you can know
-              the answer, pass the turn, and still lose.
-            </p>
-          </div>
-
-          <div className="math-block-container">
-            <h3>Head-to-Head Simulation Results</h3>
-            <p>
-              When I pit the Optimal Death Valley (ODV) DP bot against both Rober-style
-              play and my earlier Race-to-1 DP approximation, I get:
+              The DP chooses between guessing now and asking a question of size b:
             </p>
             <div className="formula-display">
-              <code>V(20,20) = 0.6300000000000001</code>
+              V(n,m) = max &#123; 1/n (guess),
               <br />
-              <code>optimal b*(20,20) = 8</code>
-              <br />
-              <br />
-              <code>ODV_vs_Rober_P1starts:</code>
-              <br />
-              <code>  P1 wins: 320, P2 wins: 80,  total: 400</code>
-              <br />
-              <code>  P1 win rate: 0.800, P2 win rate: 0.200</code>
-              <br />
-              <br />
-              <code>Rober_vs_ODV_P1starts:</code>
-              <br />
-              <code>  P1 wins: 248, P2 wins: 152, total: 400</code>
-              <br />
-              <code>  P1 win rate: 0.620, P2 win rate: 0.380</code>
-              <br />
-              <br />
-              <code>ODV_vs_DPapprox_P1starts:</code>
-              <br />
-              <code>  P1 wins: 320, P2 wins: 80,  total: 400</code>
-              <br />
-              <code>  P1 win rate: 0.800, P2 win rate: 0.200</code>
-              <br />
-              <br />
-              <code>DPapprox_vs_ODV_P1starts:</code>
-              <br />
-              <code>  P1 wins: 248, P2 wins: 152, total: 400</code>
-              <br />
-              <code>  P1 win rate: 0.620, P2 win rate: 0.380</code>
-              <br />
-              <br />
-              <code>ODV_vs_ODV_P1starts:</code>
-              <br />
-              <code>  P1 wins: 252, P2 wins: 148, total: 400</code>
-              <br />
-              <code>  P1 win rate: 0.630, P2 win rate: 0.370</code>
-              <br />
-              <br />
-              <code>P1 (Rober) vs P2 (DP), P1 starts:</code>
-              <br />
-              <code>  P1 wins: 248, P2 wins: 152, total: 400</code>
-              <br />
-              <code>  P1 win rate: 0.620, P2 win rate: 0.380</code>
-              <br />
-              <br />
-              <code>P1 (DP) vs P2 (Rober), P1 starts:</code>
-              <br />
-              <code>  P1 wins: 320, P2 wins: 80, total: 400</code>
-              <br />
-              <code>  P1 win rate: 0.800, P2 win rate: 0.200</code>
+              max<sub>1 ≤ b ≤ n−1</sub> [ (b/n)(1 − V(m,b)) + (1 − b/n)(1 − V(m,n−b)) ] &#125;
             </div>
-            <p className="emphasis">
-              When both players use the ODV strategy, the empirical P1 win rate (~0.63)
-              matches the theoretical value <code>V(20,20) ≈ 0.63</code>. That is exactly
-              what we expect from a correctly solved dynamic program.
-            </p>
-          </div>
-
-          <div className="contrast-box">
-            <h3>Why the Old Model Loses Games the Optimal One Wins</h3>
-            <ul>
-              <li>
-                <strong>Overvaluing knowledge:</strong> In the Race-to-1 model, driving
-                your pool from <code>n = 2</code> to <code>n = 1</code> is treated as a
-                literal win. In the real game, it just means you enter Death Valley: you
-                know the answer but must pass the turn and survive.
-              </li>
-              <li>
-                <strong>Ignoring the opponent's counterplay:</strong> When the opponent's
-                pool is already small, slamming into <code>n = 1</code> can actually be
-                dangerous. They now get a high-probability shot to steal the game on
-                their next move.
-              </li>
-              <li>
-                <strong>Too-sharp splits near the endgame:</strong> Race-to-1 DP keeps
-                choosing bids that maximize the chance of hitting <code>n' = 1</code>{" "}
-                immediately. The ODV DP sometimes prefers a bid that leaves{" "}
-                <code>n'</code> at 2 or 3 while keeping the opponent wider, because
-                surviving the next turn matters more than "knowing right now."
-              </li>
-              <li>
-                <strong>Small local errors, global gap:</strong> These tiny misplays in
-                Death Valley states accumulate. A symmetric Race-to-1 style strategy
-                hovers around a 0.62/0.38 split for the first player, while the corrected
-                ODV strategy reaches the true ~0.63/0.37 split.
-              </li>
-            </ul>
-            <p className="emphasis">
-              In short: the Race-to-1 abstraction optimizes the wrong objective
-              ("first to deduce"), so it leaks a small but real slice of games that the
-              Optimal Death Valley bot wins in the fully corrected model.
+            <p>
+              Reaching n=1 does not auto-win; it simply gives you a nearly 100%
+              state on your next turn if you survive the opponent&apos;s shot.
             </p>
           </div>
         </div>
       </section>
+
       {/* Conclusion */}
       <section className="section conclusion">
         <div className="content">
           <h2>The Core Issue</h2>
-          
+
           <p className="emphasis large">
-            Dr. Nica's simulator does not simulate Guess Who.
-            <br/>
-            It simulates a different game entirely — a Race-to-1 deduction race.
+            Nica&apos;s simulator doesn&apos;t simulate the standard Guess Who rules.
+            <br />
+            It simulates a different game entirely: a Race-to-1 deduction race.
           </p>
 
           <div className="final-thoughts">
             <p>
-              This was the core issue that no one in the comments had mentioned — and the one 
-              I decided to formally analyze.
+              That race is mathematically elegant, but removing Death Valley
+              changes the strategy space. You win by being first to deduce,
+              not by surviving the opponent&apos;s last guess.
             </p>
             <p>
-              By eliminating Death Valley, the Race-to-1 model fundamentally changes the strategic 
-              landscape of the game. It's not just a simplification—it's a different game with 
-              different optimal strategies.
-            </p>
-            <p>
-              Understanding this distinction is crucial for anyone attempting to apply these 
-              theoretical results to the actual board game.
+              My corrected model keeps the turn structure intact and asks:
+              &quot;What is optimal when you can know and still lose?&quot;
             </p>
           </div>
         </div>
       </section>
 
-      {/* Corrected Implementation */}
+      {/* Corrected implementation section */}
       <section className="section corrected-game">
         <div className="content">
-          <h2>My Attempt at the Corrected Version of the Game</h2>
-          
-          <div style={{background: 'rgba(255, 255, 255, 0.1)', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '2px solid rgba(96, 165, 250, 0.3)'}}>
-            <h3 style={{color: '#60a5fa', marginBottom: '1rem', fontSize: '1.3rem'}}>About the Computer's Strategy</h3>
-            <p style={{color: '#e2e8f0', marginBottom: '1rem'}}>
-              The computer opponent uses an <strong>optimal bidding strategy</strong> based on Dr. Nica's 
-              approach. It dynamically adjusts its question sizes using b*(n,m) approximation:
-            </p>
-            <ul style={{color: '#cbd5e1', listStyle: 'none', padding: 0}}>
-              <li style={{padding: '0.5rem 0'}}>• When behind (n/m {'<'} 0.5): Asks about ~60% of pool (aggressive)</li>
-              <li style={{padding: '0.5rem 0'}}>• When ahead (n/m {'>'} 2): Asks about ~40% of pool (conservative)</li>
-              <li style={{padding: '0.5rem 0'}}>• When equal: Asks about ~50% of pool (balanced)</li>
-            </ul>
-            <p style={{color: '#94a3b8', marginTop: '1rem', fontSize: '0.95rem', fontStyle: 'italic'}}>
-              However, unlike Nica's Race-to-1 simulator, this version requires exact guesses to win—preserving 
-              the Death Valley state and turn structure of real Guess Who.
-            </p>
-          </div>
+          <h2>Interactive: Corrected Game vs Optimal Death Valley Bot</h2>
 
           <p className="disclaimer">
-            This corrected implementation is based on Dr. Mihai Nica's original code, 
-            used with consent from the original author for analytical purposes. 
-            Feel free to use and modify this code for your own analytical work.
+            This implementation uses a dynamic program on V(n,m) that keeps the
+            Death Valley state and requires exact guesses to win. The bot plays
+            (approximately) optimally according to that DP.
           </p>
 
           <CorrectedGame />
         </div>
       </section>
 
-      {/* Dr. Nica's Response */}
+      {/* Nica Response (kept, slightly compressed) */}
       <section className="section nica-response">
         <div className="content">
-          <h2>Dr. Nica's Response</h2>
-          
+          <h2>Conversation with Dr. Nica</h2>
+
           <div className="conversation">
             <div className="message dylan">
               <div className="message-header">
@@ -584,24 +399,11 @@ export default function GuessWhoAnalysis() {
               </div>
               <div className="message-content">
                 <p>
-                  Hello Dr. Nica. I've sent you an email explaining what I believe is an error in your marimo code. 
-                  It appears that your simulator treats "reducing your possibilities to one number" as an immediate win, 
-                  ending the game the moment a player logically deduces the opponent's answer. In the real Guess Who? 
-                  board game, however, narrowing your possibilities to one is not a victory—you must still declare 
-                  your final guess on a later turn.
-                </p>
-                <p>
-                  For example, if the range of the number your opponent has is between 4 and 5 and player 1 asks 
-                  whether the opponent's number is 4, if the opponent's number is 5, your program correctly returns 
-                  NO (and with that the only possible number is 5) but then immediately declares that player 1 is 
-                  the winner. In the physical game however, player 1's turn would end at that moment, and the opponent 
-                  would still get a final turn to guess, which can change the outcome.
-                </p>
-                <p>
-                  By collapsing "knowing the answer" into "winning the game," the simulator unintentionally models a 
-                  different game. More of a pure 'race to deduce the final candidate' rather than the actual turn-based 
-                  structure of Guess Who?. I'm not sure if this is the same code you used for the simulations in your 
-                  2015/2016 paper, but if it is, I believe the same error may appear in those simulations too.
+                  I pointed out that the marimo simulator treats &quot;reducing
+                  to one candidate&quot; as an immediate win. In the physical
+                  Guess Who rules I&apos;m familiar with, you still must declare
+                  your guess on a later turn, so a player can know the answer
+                  and still lose if it isn&apos;t their turn.
                 </p>
               </div>
             </div>
@@ -612,10 +414,9 @@ export default function GuessWhoAnalysis() {
               </div>
               <div className="message-content">
                 <p>
-                  Thanks for pointing this out! It's not an error, the rule you described is a clearly stated version 
-                  on how we model the game. Hasbro has several rules out there with different rules depending on the 
-                  exact edition you buy (it seems to mostly depend on the target audience being older vs younger kids). 
-                  This rule set is the most mathematical and has the most interesting structure.
+                  He clarified that treating n=1 as an auto-win is an intentional
+                  modeling choice: one among several rulesets he simulated, and
+                  the one he found most mathematically elegant.
                 </p>
               </div>
             </div>
@@ -626,39 +427,11 @@ export default function GuessWhoAnalysis() {
               </div>
               <div className="message-content">
                 <p>
-                  Thank you for clarifying! I understand now that the "auto-win once reduced to one candidate" rule 
-                  is an intentional modeling choice rather than an implementation mistake. My only concern was that 
-                  this rule meaningfully alters the game-theoretic structure of Guess Who? compared to the standard 
-                  Milton Bradley/Hasbro rules, where deduction does not end the game and a player must still spend 
-                  a turn to declare the guess.
-                </p>
-                <p>
-                  This additional turn can shift the distribution of victory outcomes, since players can sometimes 
-                  overcome split or otherwise unfavorable probabilities, slightly changing the overall odds of winning. 
-                  Under the official rules, a player can know the answer and still lose if it isn't their turn, whereas 
-                  in the modeled version this dynamic disappears entirely. That shift can influence the optimal strategies 
-                  produced in simulation and can make the paper's title slightly misleading if interpreted strictly within 
-                  the classic ruleset (wherein my confusion was).
-                </p>
-                <p>
-                  This distinction is especially relevant for the ruleset used in Mark Rober's binary-search style play. 
-                  Even with the "Death Valley" principle defined in the dashboard I shared with you, and even with this 
-                  distinction, your method still appears to produce the optimal strategy for that form of turn-based 
-                  play, especially when compared to Rober's proposed binary search method—the confusion came solely from 
-                  this modeling choice, not from any actual inaccuracy. I only wanted to confirm whether the difference 
-                  was intentional since it does affect the strategy space. Thanks again for the explanation!
-                </p>
-              </div>
-            </div>
-
-            <div className="message nica">
-              <div className="message-header">
-                <strong>Dr. Mihai Nica:</strong>
-              </div>
-              <div className="message-content">
-                <p>
-                  Back in 2015 I simulated different rulesets—this one was the most mathematically interesting and elegant, 
-                  which is why I chose it!
+                  My concern wasn&apos;t that the model is &quot;wrong&quot; but
+                  that it changes the game-theoretic structure compared to the
+                  standard Milton Bradley / Hasbro rules. Under those rules, the
+                  extra turn can shift victory percentages, because players can
+                  escape seemingly lost positions.
                 </p>
               </div>
             </div>
@@ -667,15 +440,10 @@ export default function GuessWhoAnalysis() {
           <div className="reflection-box">
             <h3>Reflection</h3>
             <p>
-              Dr. Nica's clarification confirms that the Race-to-1 win condition was a deliberate design choice 
-              motivated by mathematical elegance. While this makes for a more tractable analysis, it fundamentally 
-              changes the strategic landscape compared to the standard Guess Who? rules where Death Valley exists.
-            </p>
-            <p>
-              The key takeaway: both models are valid—they simply answer different questions. Nica's model asks 
-              "what's optimal in a pure deduction race?" while the standard rules ask "what's optimal when turns 
-              and timing matter?" Understanding this distinction is crucial for anyone applying these theoretical 
-              results to actual gameplay.
+              Both models are valid; they simply ask different questions. Nica&apos;s
+              model solves a pure deduction race. My corrected model solves the
+              actual turn-based game where Death Valley exists and &quot;knowing&quot;
+              is not the same as &quot;winning.&quot;
             </p>
           </div>
         </div>
@@ -689,7 +457,8 @@ export default function GuessWhoAnalysis() {
             <span>Contact: dylantague7704@gmail.com</span>
           </div>
           <div className="footer-note">
-            Part of an analytical portfolio exploring the gap between Dr. Nica's mathematical model and the ruleset of the 'Guess Who?' game.
+            Part of a portfolio exploring gaps between mathematical models and
+            real-world rulesets in games like Guess Who.
           </div>
         </div>
       </footer>
@@ -699,36 +468,38 @@ export default function GuessWhoAnalysis() {
   );
 }
 
-// Game Playback Component with manual Continue button
+// =======================
+// Example Race-to-1 Playback
+// =======================
 const GamePlayback = () => {
   const [currentMove, setCurrentMove] = useState(0);
-  
+
   const moves = [
-    { 
-      p1: { question: "Initial", answer: "", n: 20, pool: Array.from({length: 20}, (_, i) => i + 1) },
-      p2: { question: "", answer: "", m: 20, pool: Array.from({length: 20}, (_, i) => i + 1) }
+    {
+      p1: { question: "Initial", answer: "", n: 20, pool: Array.from({ length: 20 }, (_, i) => i + 1) },
+      p2: { question: "", answer: "", m: 20, pool: Array.from({ length: 20 }, (_, i) => i + 1) },
     },
-    { 
-      p1: { question: "[1,9]?", answer: "Y", n: 9, pool: [1,2,3,4,5,6,7,8,9] },
-      p2: { question: "[1,8]?", answer: "N", m: 12, pool: [9,10,11,12,13,14,15,16,17,18,19,20] }
+    {
+      p1: { question: "[1,9]?", answer: "Y", n: 9, pool: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+      p2: { question: "[1,8]?", answer: "N", m: 12, pool: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] },
     },
-    { 
-      p1: { question: "[1,5]?", answer: "Y", n: 5, pool: [1,2,3,4,5] },
-      p2: { question: "[9,12]?", answer: "N", m: 8, pool: [13,14,15,16,17,18,19,20] }
+    {
+      p1: { question: "[1,5]?", answer: "Y", n: 5, pool: [1, 2, 3, 4, 5] },
+      p2: { question: "[9,12]?", answer: "N", m: 8, pool: [13, 14, 15, 16, 17, 18, 19, 20] },
     },
-    { 
-      p1: { question: "[1,3]?", answer: "N", n: 2, pool: [4,5] },
-      p2: { question: "[13,13]?", answer: "N", m: 7, pool: [14,15,16,17,18,19,20] }
+    {
+      p1: { question: "[1,3]?", answer: "N", n: 2, pool: [4, 5] },
+      p2: { question: "[13,13]?", answer: "N", m: 7, pool: [14, 15, 16, 17, 18, 19, 20] },
     },
-    { 
+    {
       p1: { question: "[4,4]?", answer: "N", n: 1, pool: [5], winner: true },
-      p2: { question: "—", answer: "", m: 7, pool: [14,15,16,17,18,19,20], skipped: true }
-    }
+      p2: { question: "—", answer: "", m: 7, pool: [14, 15, 16, 17, 18, 19, 20], skipped: true },
+    },
   ];
 
   const handleContinue = () => {
     if (currentMove < moves.length - 1) {
-      setCurrentMove(currentMove + 1);
+      setCurrentMove((m) => m + 1);
     }
   };
 
@@ -742,11 +513,14 @@ const GamePlayback = () => {
   return (
     <div className="game-playback">
       <div className="playback-controls">
-        <button 
-          onClick={handleContinue} 
+        <button
+          onClick={handleContinue}
           className="control-btn"
           disabled={isLastMove}
-          style={{opacity: isLastMove ? 0.5 : 1, cursor: isLastMove ? 'not-allowed' : 'pointer'}}
+          style={{
+            opacity: isLastMove ? 0.5 : 1,
+            cursor: isLastMove ? "not-allowed" : "pointer",
+          }}
         >
           <ChevronRight size={20} />
           Continue
@@ -770,14 +544,18 @@ const GamePlayback = () => {
             <div className="move-display">
               <span className="question">{currentState.p1.question}</span>
               {currentState.p1.answer && (
-                <span className={`answer ${currentState.p1.answer === 'Y' ? 'yes' : 'no'}`}>
+                <span
+                  className={`answer ${
+                    currentState.p1.answer === "Y" ? "yes" : "no"
+                  }`}
+                >
                   {currentState.p1.answer}
                 </span>
               )}
             </div>
           )}
           <div className="candidate-pool">
-            {currentState.p1.pool.map(num => (
+            {currentState.p1.pool.map((num) => (
               <div key={num} className="candidate">
                 {num}
               </div>
@@ -785,7 +563,7 @@ const GamePlayback = () => {
           </div>
           {currentState.p1.winner && currentMove === 4 && (
             <div className="winner-badge">
-              ⚠️ NICA'S SIMULATOR DECLARES: P1 Winner!
+              ⚠️ Simulator declares: P1 wins instantly at n=1
             </div>
           )}
         </div>
@@ -796,30 +574,32 @@ const GamePlayback = () => {
 
         <div className="player-state">
           <div className="player-header">
-            <h3>P2 (Dr. Nica's Simulator)</h3>
+            <h3>P2 (Simulator)</h3>
             <div className="pool-size">m = {currentState.p2.m}</div>
           </div>
           {currentState.p2.question && (
             <div className="move-display">
               <span className="question">{currentState.p2.question}</span>
               {currentState.p2.answer && (
-                <span className={`answer ${currentState.p2.answer === 'Y' ? 'yes' : 'no'}`}>
+                <span
+                  className={`answer ${
+                    currentState.p2.answer === "Y" ? "yes" : "no"
+                  }`}
+                >
                   {currentState.p2.answer}
                 </span>
               )}
             </div>
           )}
           <div className="candidate-pool">
-            {currentState.p2.pool.map(num => (
+            {currentState.p2.pool.map((num) => (
               <div key={num} className="candidate">
                 {num}
               </div>
             ))}
           </div>
           {currentState.p2.skipped && currentMove === 4 && (
-            <div className="skipped-badge">
-              Turn Skipped!
-            </div>
+            <div className="skipped-badge">Turn Skipped</div>
           )}
         </div>
       </div>
@@ -827,39 +607,51 @@ const GamePlayback = () => {
   );
 };
 
-// Death Valley visualization
+// =======================
+// Death Valley Viz
+// =======================
 const DeathValleyViz = () => {
   const [phase, setPhase] = useState(0);
-  
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPhase(p => (p + 1) % 4);
+    const id = setInterval(() => {
+      setPhase((p) => (p + 1) % 4);
     }, 3000);
-    return () => clearInterval(interval);
+    return () => clearInterval(id);
   }, []);
 
   const phases = [
-    { title: "Safe Zone", desc: "n ≥ 3", danger: false, pool: [3,4,5,6,7] },
-    { title: "Approaching", desc: "n = 2", danger: true, pool: [4,5] },
+    { title: "Safe Zone", desc: "n ≥ 3", danger: false, pool: [3, 4, 5, 6, 7] },
+    { title: "Approaching", desc: "n = 2", danger: true, pool: [4, 5] },
     { title: "Death Valley", desc: "n = 1", danger: true, pool: [5], critical: true },
-    { title: "Your Turn", desc: "Must declare!", danger: true, pool: [5], declare: true }
+    {
+      title: "Your Next Turn",
+      desc: "Declare the answer",
+      danger: true,
+      pool: [5],
+      declare: true,
+    },
   ];
 
   const current = phases[phase];
 
   return (
     <div className="death-valley">
-      <div className={`valley-state ${current.danger ? 'danger' : 'safe'} ${current.critical ? 'critical' : ''}`}>
+      <div
+        className={`valley-state ${
+          current.danger ? "danger" : "safe"
+        } ${current.critical ? "critical" : ""}`}
+      >
         <div className="valley-header">
           <h4>{current.title}</h4>
           <div className="valley-formula">{current.desc}</div>
         </div>
-        
+
         <div className="valley-pool">
-          {current.pool.map((num, i) => (
-            <div 
-              key={num} 
-              className={`valley-card ${current.critical ? 'pulse' : ''}`}
+          {current.pool.map((num) => (
+            <div
+              key={num}
+              className={`valley-card ${current.critical ? "pulse" : ""}`}
             >
               {num}
             </div>
@@ -868,57 +660,58 @@ const DeathValleyViz = () => {
 
         {current.critical && (
           <div className="warning-text">
-            ⚠️ You know the answer but cannot act yet!
+            ⚠️ You know the answer but must pass the turn.
           </div>
         )}
-
         {current.declare && (
           <div className="declare-text">
-            ✓ Opponent missed - You can now declare "You are 5!"
+            ✓ Opponent misses → you can now declare &quot;You are 5&quot;.
           </div>
         )}
       </div>
 
       <div className="phase-dots">
         {phases.map((_, i) => (
-          <div key={i} className={`dot ${i === phase ? 'active' : ''}`} />
+          <div key={i} className={`dot ${i === phase ? "active" : ""}`} />
         ))}
       </div>
     </div>
   );
 };
 
-// State tree visualization
+// =======================
+// State Tree Comparison
+// =======================
 const StateTree = () => {
   return (
     <div className="state-tree">
       <div className="tree-header">
         <h3>Turn Structure Comparison</h3>
       </div>
-      
+
       <div className="tree-columns">
         <div className="tree-col">
-          <h4>Nica's Race-to-1</h4>
+          <h4>Race-to-1 Model</h4>
           <div className="tree-nodes">
             <div className="node">n = 20, m = 20</div>
             <div className="node">n = 9, m = 12</div>
             <div className="node">n = 5, m = 8</div>
             <div className="node">n = 2, m = 7</div>
-            <div className="node winner">n = 1 → P1 WINS</div>
-            <div className="node skipped">P2 turn skipped</div>
+            <div className="node winner">n = 1 → P1 wins immediately</div>
+            <div className="node skipped">P2&apos;s last turn removed</div>
           </div>
         </div>
 
         <div className="tree-col">
-          <h4>Real Guess Who</h4>
+          <h4>Real Guess Who (Death Valley)</h4>
           <div className="tree-nodes">
             <div className="node">n = 20, m = 20</div>
             <div className="node">n = 9, m = 12</div>
             <div className="node">n = 5, m = 8</div>
             <div className="node">n = 2, m = 7</div>
             <div className="node death-valley">n = 1, m = 7 (Death Valley)</div>
-            <div className="node">P2 takes turn</div>
-            <div className="node winner">P1 declares → P1 WINS</div>
+            <div className="node">P2 gets final guess</div>
+            <div className="node winner">P1 declares afterwards → P1 wins</div>
           </div>
         </div>
       </div>
@@ -926,62 +719,35 @@ const StateTree = () => {
   );
 };
 
-// ========================
-// Optimal "Death Valley" DP Strategy
-// ========================
-//
-// This DP works directly on V(n, m):
-//   V(n, m) = win probability for the player to move
-//             when their pool has size n and the opponent's
-//             pool has size m under the *turn-based* game
-//             where Death Valley exists (no auto-win at n = 1).
-
-// ========================
-// Optimal "Death Valley" DP Strategy (with guess action)
-// ========================
-//
-// dvValue(n, m) = win probability for the player to move,
-// under the corrected turn-based rules (Death Valley + exact guess + Mercy).
-//
-// Actions considered by the DP:
-//   - Guess now  → success prob = 1/n
-//   - Ask a question [subset of size b] with 1 <= b <= n-1
-//     and then roles swap.
-//
-// This automatically gives:
-//   - V(1, m) ≈ 1   (you just guess and win)
-//   - V(n, 1) ≈ 1/n (they know you, but you get one shot at guessing them)
+// =======================
+// Death Valley DP + Evaluation
+// =======================
 
 const MAX_POOL_SIZE = 20;
 
-const dvValueMemo = new Map();   // key "n,m" -> V(n,m)
-const dvBestBidMemo = new Map(); // key "n,m" -> best question size b (if any)
+const dvValueMemo = new Map();   // "n,m" -> V(n,m)
+const dvBestBidMemo = new Map(); // "n,m" -> best b (if question beats guess)
 
 const dvKey = (n, m) => `${n},${m}`;
 
 function dvValue(n, m) {
-  if (n <= 0 || m <= 0) {
-    // Degenerate: treat as 0.5
-    return 0.5;
-  }
+  if (n <= 0 || m <= 0) return 0.5;
 
   const key = dvKey(n, m);
   const cached = dvValueMemo.get(key);
   if (cached !== undefined) return cached;
 
-  // Option 1: "guess now"
-  // With n candidates and no extra info, probability of being right is 1/n.
+  // Option 1: guess now
   let bestVal = 1 / n;
-  let bestB = 0; // 0 means "best is to guess", not to ask a question
+  let bestB = 0;
 
-  // Option 2: ask a question of size b (1 <= b <= n-1), then roles swap
+  // Option 2: ask question of size b
   if (n > 1) {
     for (let b = 1; b <= n - 1; b++) {
       const pYes = b / n;
-      const valYes = 1 - dvValue(m, b);       // YES branch: opponent to move with pool (m, b)
-      const valNo  = 1 - dvValue(m, n - b);   // NO branch: opponent to move with pool (m, n-b)
+      const valYes = 1 - dvValue(m, b);      // opponent to move in (m,b)
+      const valNo = 1 - dvValue(m, n - b);   // opponent to move in (m,n-b)
       const ev = pYes * valYes + (1 - pYes) * valNo;
-
       if (ev > bestVal + 1e-12) {
         bestVal = ev;
         bestB = b;
@@ -1005,254 +771,148 @@ function precomputeDeathValleyStrategy() {
 }
 precomputeDeathValleyStrategy();
 
-/**
- * getDeathValleyBestBid(n, m):
- *   Returns the optimal subset size b according to the
- *   turn-based Death Valley DP *if* asking a question is
- *   better than just guessing. If the DP prefers guessing,
- *   this falls back to a simple half-split.
- */
-function getDeathValleyBestBid(n, m) {
-  if (n <= 1) return 1;
-
+// If dvBestBidMemo has no b for (n,m), guessing is optimal (or tied)
+function getOptimalBotAction(n, m) {
+  if (n <= 1) {
+    return { type: "guess" };
+  }
   const key = dvKey(n, m);
-  const stored = dvBestBidMemo.get(key);
-  if (stored !== undefined) return stored;
-
-  // fallback: approximate half-split
-  return Math.max(1, Math.floor(n / 2));
+  const b = dvBestBidMemo.get(key);
+  if (b === undefined) {
+    return { type: "guess" };
+  }
+  return { type: "question", b };
 }
 
-/**
- * computePlayerWinProb(nPlayer, nComputer, isPlayerTurn)
- * Returns P1's (human's) win probability from the current state,
- * assuming perfect play for both sides going forward.
- */
-function computePlayerWinProb(nPlayer, nComputer, isPlayerTurn) {
-  if (nPlayer <= 0 || nComputer <= 0) return null;
+// Player 1 (human) win probability from current state
+function getPlayerPerspectiveWinProb(nPlayer, nComputer, isPlayerTurn) {
+  if (nPlayer <= 0 || nComputer <= 0) return 0.5;
   if (isPlayerTurn) {
-    // Player to move: directly V(n, m)
     return dvValue(nPlayer, nComputer);
-  } else {
-    // Computer to move: P1's win prob = 1 - V(m, n)
-    return 1 - dvValue(nComputer, nPlayer);
   }
+  return 1 - dvValue(nComputer, nPlayer);
 }
 
-/**
- * evaluatePlayerMoveQuality(n, m, b, preWin):
- *   n, m   = pool sizes before the move
- *   b      = subset size you actually asked about
- *   preWin = P1 engine eval before the move
- *
- * Uses the DP to compute:
- *   - optimal EV (best possible question)
- *   - EV of the question you actually asked
- * and classifies the move à la chess engine.
- */
-function evaluatePlayerMoveQuality(n, m, b, preWin) {
-  if (n <= 1 || b <= 0 || b >= n) return null;
-
-  const optimalVal = dvValue(n, m);
-  const optimalB   = getDeathValleyBestBid(n, m);
-
-  // EV of the actual question with subset size b
-  const pYes   = b / n;
-  const valYes = 1 - dvValue(m, b);
-  const valNo  = 1 - dvValue(m, n - b);
-  const actualEV = pYes * valYes + (1 - pYes) * valNo;
-
-  const loss        = Math.max(0, optimalVal - actualEV); // how much worse than optimal
-  const improvement = actualEV - preWin;                  // how much you improved vs pre-move
-
-  let category = "good";
-  let label    = "Good move";
-  let icon     = "✓";
-
-  // "Brilliant": near-optimal AND massively improves your odds
-  if (improvement >= 0.15 && loss < 0.02) {
-    category = "brilliant";
-    label    = "Brilliant move!";
-    icon     = "!!!";          // purple circle, white exclamations via CSS
-  } else if (loss < 1e-4 && b === optimalB) {
-    category = "best";
-    label    = "Best move (engine match)";
-    icon     = "!!";           // light blue circle
-  } else if (loss < 0.01) {
-    category = "great";
-    label    = "Great move";
-    icon     = "★";            // green star
-  } else if (loss < 0.03) {
-    category = "good";
-    label    = "Good move";
-    icon     = "✓";            // grey-green checkmark
-  } else if (loss < 0.08) {
-    category = "inaccuracy";
-    label    = "Inaccuracy";
-    icon     = "!?";           // yellow ?!
-  } else if (loss < 0.20) {
-    category = "mistake";
-    label    = "Mistake";
-    icon     = "?";            // dark orange ?
-  } else {
-    category = "blunder";
-    label    = "Blunder";
-    icon     = "???";          // dark red ???
-  }
-
-  return {
-    category,
-    label,
-    icon,
-    loss,
-    improvement,
-    actualEV,
-    optimalVal,
-    optimalB,
-  };
-}
-// ========================
-// Optimal "Death Valley" DP Strategy (with guess action)
-// ========================
-//
-// dvValue(n, m) = win probability for the player to move,
-// under the corrected turn-based rules (Death Valley + exact guess + Mercy).
-//
-// Actions considered by the DP:
-//   - Guess now  → success prob = 1/n
-//   - Ask a question [subset of size b] with 1 <= b <= n-1
-//     and then roles swap.
-//
-// This automatically gives:
-//   - V(1, m) ≈ 1   (you just guess and win)
-//   - V(n, 1) ≈ 1/n (they know you, but you get one shot at guessing them)
-
+// Move quality evaluation
 function evaluatePlayerMoveQuality({
-  n,          // your pool size BEFORE the move
-  m,          // opponent pool size BEFORE the move
-  b,          // subset size you actually asked about
-  preWin,     // dvValue-based win prob before the move
-  branchWin,  // dvValue-based win prob after this actual branch
+  nBefore,
+  mBefore,
+  b,
+  preWin,
+  branchWin,
 }) {
-  if (n <= 1 || b <= 0 || b >= n) return null;
+  if (nBefore <= 1 || b <= 0 || b >= nBefore) return null;
 
-  const optimalVal = dvValue(n, m);
-  const optimalB   = getDeathValleyBestBid(n, m);
+  const optimalVal = dvValue(nBefore, mBefore);
+  const optimalB = dvBestBidMemo.get(dvKey(nBefore, mBefore)) ?? null;
 
-  // Expected value of your chosen question, averaged over Yes/No
-  const pYes   = b / n;
-  const valYes = 1 - dvValue(m, b);
-  const valNo  = 1 - dvValue(m, n - b);
+  const pYes = b / nBefore;
+  const valYes = 1 - dvValue(mBefore, b);
+  const valNo = 1 - dvValue(mBefore, nBefore - b);
   const actualEV = pYes * valYes + (1 - pYes) * valNo;
-
-  // How much your choice sacrifices vs optimal *on average*
   const evLoss = Math.max(0, optimalVal - actualEV);
 
-  // Actual swing in this branch vs what your position was before the move
-  const branchGain = branchWin - preWin;     // > 0 = your real odds went up
-  const branchDrop = preWin - branchWin;     // > 0 = your real odds went down
+  const branchGain = branchWin - preWin;
+  const branchDrop = preWin - branchWin;
 
-  let category = "good";
-  let label    = "Good move";
-  let icon     = "✓";
+  const HUGE_GAIN = 0.15;
+  const LONG_SHOT_BASELINE = 0.25;
+  const LONG_SHOT_TARGET = 0.9;
 
-  // ==== BRILLIANT (your "lucky but better than optimal" definition) ====
-  // You intentionally did something the engine doesn't like (EV-wise),
-  // but this actual branch shoots your odds up a lot.
-  //
-  // Conditions:
-  //   1) You did NOT play the engine move (b != optimalB)
-  //   2) On average, your move is clearly worse than optimal (evLoss > 0.01)
-  //   3) This real branch increased your winning chances by ≥ 15 percentage points.
-  if (b !== optimalB && evLoss > 0.01 && branchGain >= 0.15) {
+  // === Long-shot brilliant: you were basically dead, low-odds shot hits ===
+  if (
+    preWin <= LONG_SHOT_BASELINE &&
+    b === 1 &&
+    nBefore >= 4 &&
+    branchWin >= LONG_SHOT_TARGET
+  ) {
     return {
       category: "brilliant",
-      label: "Brilliant (lucky, but above optimal EV!)",
+      label: "Brilliant long-shot (beating the odds)",
       icon: "???",
-      evLoss,
-      branchGain,
-      branchDrop,
-      actualEV,
-      optimalVal,
-      optimalB,
     };
   }
 
-  // For everything else, classify based on how much your *real odds* changed.
-  if (branchDrop <= 0.005) {
-    // basically didn't hurt your position (and maybe improved it)
-    if (b === optimalB) {
-      category = "best";
-      label    = "Best move (engine match)";
-      icon     = "!!";
-    } else {
-      category = "great";
-      label    = "Great move";
-      icon     = "★";
-    }
-  } else if (branchDrop <= 0.03) {
-    category = "good";
-    label    = "Good move";
-    icon     = "✓";
-  } else if (branchDrop <= 0.08) {
-    category = "inaccuracy";
-    label    = "Inaccuracy";
-    icon     = "!?";
-  } else if (branchDrop <= 0.20) {
-    category = "mistake";
-    label    = "Mistake";
-    icon     = "?";
-  } else {
-    category = "blunder";
-    label    = "Blunder";
-    icon     = "!!!";
+  // === Engine-brilliant: suboptimal line but huge real improvement ===
+  if (
+    optimalB !== null &&
+    b !== optimalB &&
+    evLoss > 0.01 &&
+    branchGain >= HUGE_GAIN &&
+    branchWin >= optimalVal - 1e-6
+  ) {
+    return {
+      category: "brilliant",
+      label: "Brilliant (non-engine idea, huge improvement)",
+      icon: "???",
+    };
   }
 
-  return {
-    category,
-    label,
-    icon,
-    evLoss,
-    branchGain,
-    branchDrop,
-    actualEV,
-    optimalVal,
-    optimalB,
-  };
+  // === Best move: matched engine line and didn’t damage your eval ===
+  if (optimalB !== null && b === optimalB && branchDrop <= 0.005) {
+    return {
+      category: "best",
+      label: "Best move (engine line)",
+      icon: "!!",
+    };
+  }
+
+  // === Everything else: classify by how much your odds changed ===
+  let category = "good";
+  let label = "Good move";
+  let icon = "✓";
+
+  if (branchGain >= 0.05) {
+    category = "great";
+    label = "Great move";
+    icon = "★";
+  } else if (branchGain >= 0.01) {
+    category = "good";
+    label = "Good move";
+    icon = "✓";
+  } else if (branchDrop <= 0.03) {
+    category = "good";
+    label = "Good / neutral move";
+    icon = "✓";
+  } else if (branchDrop <= 0.08) {
+    category = "inaccuracy";
+    label = "Inaccuracy";
+    icon = "!?";
+  } else if (branchDrop <= 0.20) {
+    category = "mistake";
+    label = "Mistake";
+    icon = "?";
+  } else {
+    category = "blunder";
+    label = "Blunder";
+    icon = "!!!";
+  }
+
+  return { category, label, icon };
 }
 
-// ========================
-// Corrected Game Component (single optimal bot)
-// ========================
-// ========================
-// Corrected Game Component (single optimal bot + live eval)
-// ========================
+// =======================
+// Corrected Game Component
+// =======================
 const CorrectedGame = () => {
   const [gameStarted, setGameStarted] = useState(false);
-  const [playerSecret, setPlayerSecret] = useState(null);
-  const [computerSecret, setComputerSecret] = useState(null);
+  const [playerSecret, setPlayerSecret] = useState(null);   // number you guess
+  const [computerSecret, setComputerSecret] = useState(null); // number bot guesses
   const [playerPool, setPlayerPool] = useState([]);
   const [computerPool, setComputerPool] = useState([]);
   const [selectedNumbers, setSelectedNumbers] = useState([]);
   const [gameLog, setGameLog] = useState([]);
   const [winner, setWinner] = useState(null);
   const [playerTurn, setPlayerTurn] = useState(true);
-  const [playerWinProb, setPlayerWinProb] = useState(null);
-const [lastMoveQuality, setLastMoveQuality] = useState(null);
-
-
-  // New: engine evaluation + last move quality
-  const [winProb, setWinProb] = useState(null); // P1's win prob (0–1)
+  const [winProb, setWinProb] = useState(null); // live P1 win chance
   const [lastMoveQuality, setLastMoveQuality] = useState(null);
 
   const startGame = () => {
-    // Number the PLAYER is trying to guess (the computer's secret)
-    const computerHiddenNumber = Math.floor(Math.random() * 20) + 1;
-    // Number the COMPUTER is trying to guess (the player's secret)
-    const playerHiddenNumber = Math.floor(Math.random() * 20) + 1;
+    const computerHidden = Math.floor(Math.random() * 20) + 1;
+    const playerHidden = Math.floor(Math.random() * 20) + 1;
 
-    setPlayerSecret(computerHiddenNumber);   // you are guessing this
-    setComputerSecret(playerHiddenNumber);   // computer is guessing this
+    setPlayerSecret(computerHidden);
+    setComputerSecret(playerHidden);
 
     const fullPool = Array.from({ length: 20 }, (_, i) => i + 1);
 
@@ -1260,200 +920,213 @@ const [lastMoveQuality, setLastMoveQuality] = useState(null);
     setComputerPool(fullPool);
     setSelectedNumbers([]);
     setGameLog([
-      "🎮 Game started! Each side has secretly chosen a number between 1 and 20.",
-      "🤖 Bot: Optimal Death Valley DP (turn-based V(n,m) strategy).",
+      "🎮 Game started! Each side chooses a secret number between 1 and 20.",
+      "🤖 Bot strategy: Optimal Death Valley DP (V(n,m) with guess vs question).",
     ]);
     setWinner(null);
     setGameStarted(true);
     setPlayerTurn(true);
 
-    // Initial engine eval: V(20, 20) from P1's perspective
-    setWinProb(computePlayerWinProb(fullPool.length, fullPool.length, true));
+    const initialWin = getPlayerPerspectiveWinProb(20, 20, true);
+    setWinProb(initialWin);
     setLastMoveQuality(null);
   };
 
   const handleNumberClick = (num) => {
     if (!playerTurn || winner) return;
-    
+    if (!playerPool.includes(num)) return;
+
     if (selectedNumbers.includes(num)) {
-      // Deselect if already selected
       setSelectedNumbers(selectedNumbers.filter((n) => n !== num));
     } else if (selectedNumbers.length < 2) {
-      // Select if less than 2 numbers selected
       setSelectedNumbers([...selectedNumbers, num].sort((a, b) => a - b));
     } else {
-      // Replace selection if 2 already selected
       setSelectedNumbers([num]);
     }
   };
 
   const makeRangeGuess = () => {
-  if (!playerTurn || winner || selectedNumbers.length === 0) return;
+    if (!playerTurn || winner || selectedNumbers.length === 0) return;
 
-  const nBefore = playerPool.length;
-  const mBefore = computerPool.length;
-  const preWin  = playerWinProb !== null ? playerWinProb : dvValue(nBefore, mBefore);
+    const nBefore = playerPool.length;
+    const mBefore = computerPool.length;
+    const preWin = getPlayerPerspectiveWinProb(nBefore, mBefore, true);
 
     const min = selectedNumbers[0];
     const max =
       selectedNumbers.length === 2 ? selectedNumbers[1] : selectedNumbers[0];
 
-    const n = playerPool.length;
-    const m = computerPool.length;
-
-    // Engine eval BEFORE the move
-    const preWin = computePlayerWinProb(n, m, true);
-
-    // Size of the subset you are actually querying: all numbers in your pool within [min, max]
-    const subsetSize = playerPool.filter((x) => x >= min && x <= max).length;
-
-    // Evaluate move quality (unless it's a degenerate case)
-    const quality = evaluatePlayerMoveQuality(n, m, subsetSize, preWin);
-    if (quality) {
-      setLastMoveQuality(quality);
-    }
-
-    // Check if this is an exact guess (min === max)
+    // Exact guess
     if (min === max) {
       const guess = min;
+      const b = 1;
+
       if (guess === playerSecret) {
+        const branchWin = 1.0;
+        const quality = evaluatePlayerMoveQuality({
+          nBefore,
+          mBefore,
+          b,
+          preWin,
+          branchWin,
+        });
+        setLastMoveQuality(quality || null);
+
+        setGameLog((prev) => [
+          ...prev,
+          `👤 You asked: [${guess}, ${guess}]? Answer: YES — Correct! You win.`,
+        ]);
         setWinner("player");
         setWinProb(1.0);
-        setGameLog((prev) => [
-          ...prev,
-          `👤 You asked: [${guess}, ${guess}]? Answer: YES ✅ CORRECT! You win!`,
-        ]);
-        return;
-      } else {
-        setGameLog((prev) => [
-          ...prev,
-          `👤 You asked: [${guess}, ${guess}]? Answer: NO`,
-        ]);
-        const newPlayerPool = playerPool.filter((n) => n !== guess);
-        setPlayerPool(newPlayerPool);
-
-        // After your move, it's computer's turn
-        const newWin = computePlayerWinProb(
-          newPlayerPool.length,
-          computerPool.length,
-          false
-        );
-        setWinProb(newWin);
-
         setSelectedNumbers([]);
-        setPlayerTurn(false);
-        setTimeout(() => computerTurn(), 1000);
         return;
       }
+
+      // Wrong exact guess: remove that candidate from your pool
+      const newPlayerPool = playerPool.filter((x) => x !== guess);
+
+      setGameLog((prev) => [
+        ...prev,
+        `👤 You asked: [${guess}, ${guess}]? Answer: NO (${newPlayerPool.length} remaining)`,
+      ]);
+
+      setPlayerPool(newPlayerPool);
+
+      const branchWin = getPlayerPerspectiveWinProb(
+        newPlayerPool.length,
+        computerPool.length,
+        false
+      );
+      setWinProb(branchWin);
+
+      const quality = evaluatePlayerMoveQuality({
+        nBefore,
+        mBefore,
+        b,
+        preWin,
+        branchWin,
+      });
+      setLastMoveQuality(quality || null);
+
+      setSelectedNumbers([]);
+      setPlayerTurn(false);
+      setTimeout(() => computerTurn(), 700);
+      return;
     }
-    
-    /// Range guess
-const inRange = min <= playerSecret && playerSecret <= max;
-const newPlayerPool = inRange 
-  ? playerPool.filter(n => n >= min && n <= max)
-  : playerPool.filter(n => n < min || n > max);
 
-setPlayerPool(newPlayerPool);
+    // Range question
+    const inRange = min <= playerSecret && playerSecret <= max;
 
-const logMsg = `👤 You asked: [${min}, ${max}]? Answer: ${inRange ? 'YES' : 'NO'} (${newPlayerPool.length} remaining)`;
-setGameLog(prev => [...prev, logMsg]);
+    const newPlayerPool = inRange
+      ? playerPool.filter((x) => x >= min && x <= max)
+      : playerPool.filter((x) => x < min || x > max);
 
-    
+    const b = newPlayerPool.length === 0
+      ? 0
+      : playerPool.filter((x) => x >= min && x <= max).length; // subset size in your pool
 
-    // After your question, it's the computer's turn.
-// From your perspective, your new win prob is 1 - V(mBefore, newN)
-const newN = newPlayerPool.length;
-const branchWin = 1 - dvValue(mBefore, newN);
-setPlayerWinProb(branchWin);
+    setPlayerPool(newPlayerPool);
 
-// Subset size b you actually asked about
-const b = max - min + 1;
+    const logMsg = `👤 You asked: [${min}, ${max}]? Answer: ${
+      inRange ? "YES" : "NO"
+    } (${newPlayerPool.length} remaining)`;
+    setGameLog((prev) => [...prev, logMsg]);
 
-// Evaluate move quality
-const quality = evaluatePlayerMoveQuality({
-  n: nBefore,
-  m: mBefore,
-  b,
-  preWin,
-  branchWin,
-});
-setLastMoveQuality(quality || null);
+    const branchWin = getPlayerPerspectiveWinProb(
+      newPlayerPool.length,
+      computerPool.length,
+      false
+    );
+    setWinProb(branchWin);
 
-    
+    const quality =
+      b > 0
+        ? evaluatePlayerMoveQuality({
+            nBefore,
+            mBefore,
+            b,
+            preWin,
+            branchWin,
+          })
+        : null;
+    setLastMoveQuality(quality || null);
+
     setSelectedNumbers([]);
     setPlayerTurn(false);
-    setTimeout(() => computerTurn(), 1000);
+    setTimeout(() => computerTurn(), 700);
   };
 
   const computerTurn = () => {
     if (winner) return;
 
-    // If computer already has a single candidate, we are in Death Valley resolution:
-    // it "knows" the answer and must now declare exactly.
-    if (computerPool.length === 1) {
-      const guess = computerPool[0];
-      if (guess === computerSecret) {
-        setWinner("computer");
-        setWinProb(0.0);
-        setGameLog((prev) => [
-          ...prev,
-          `🤖 Computer declared ${guess} – CORRECT! Computer wins!`,
-        ]);
-      } else {
-        // This path is basically unreachable under consistent DP play,
-        // but we include it for completeness.
-        setGameLog((prev) => [
-          ...prev,
-          `🤖 Computer declared ${guess} – WRONG.`,
-        ]);
-        // If we ever wanted: remove this candidate and recompute eval.
-        setPlayerTurn(true);
-      }
-      return;
-    }
-
     const n = computerPool.length;
     const m = playerPool.length;
 
-    // Optimal Death Valley bid from the DP
-    const bidSize = getDeathValleyBestBid(n, m);
+    if (n <= 0 || m <= 0) return;
 
-    const sortedPool = [...computerPool].sort((a, b) => a - b);
-    const min = sortedPool[0];
-    const max = sortedPool[Math.min(bidSize - 1, sortedPool.length - 1)];
+    const action = getOptimalBotAction(n, m);
 
-    const inRange = min <= computerSecret && computerSecret <= max;
+    // Bot chooses to guess
+    if (action.type === "guess") {
+      const guessIndex = Math.floor(Math.random() * n);
+      const guess = computerPool[guessIndex];
 
-    const newComputerPool = inRange
-      ? computerPool.filter((num) => num >= min && num <= max)
-      : computerPool.filter((num) => num < min || num > max);
+      if (guess === computerSecret) {
+        setGameLog((prev) => [
+          ...prev,
+          `🤖 Computer guesses ${guess} — Correct. Computer wins.`,
+        ]);
+        setWinner("computer");
+        setWinProb(0.0);
+        return;
+      }
+
+      const newComputerPool = computerPool.filter((x) => x !== guess);
+      setComputerPool(newComputerPool);
+
+      setGameLog((prev) => [
+        ...prev,
+        `🤖 Computer guesses ${guess} — Wrong (${newComputerPool.length} remaining)`,
+      ]);
+
+      const newWin = getPlayerPerspectiveWinProb(
+        playerPool.length,
+        newComputerPool.length,
+        true
+      );
+      setWinProb(newWin);
+      setLastMoveQuality(null);
+      setPlayerTurn(true);
+      return;
+    }
+
+    // Bot asks optimal question of size b
+    const bidSize = action.b;
+    const sorted = [...computerPool].sort((a, b) => a - b);
+    const subset = sorted.slice(0, bidSize);
+    const minQ = subset[0];
+    const maxQ = subset[subset.length - 1];
+
+    const inSubset = subset.includes(computerSecret);
+
+    const newComputerPool = inSubset
+      ? subset
+      : computerPool.filter((x) => !subset.includes(x));
 
     setComputerPool(newComputerPool);
 
-    const logMsg = `🤖 [ODV] asked: [${min}, ${max}]? Answer: ${
-      inRange ? "YES" : "NO"
+    const logMsg = `🤖 [ODV] asks: [${minQ}, ${maxQ}]? Answer: ${
+      inSubset ? "YES" : "NO"
     } (${newComputerPool.length} remaining)`;
     setGameLog((prev) => [...prev, logMsg]);
 
-    // In the corrected, turn-based game this is a Death Valley knowledge state:
-    // the computer may know the answer (pool size 1) but must wait for its next
-    // turn to declare.
-    if (newComputerPool.length === 1) {
-      setGameLog((prev) => [
-        ...prev,
-        "🤖 Computer now knows the answer, but must declare on a future turn (Death Valley).",
-      ]);
-    }
-
-    // After computer's move, it's your turn: update engine eval for P1 to move
-    const newWin = computePlayerWinProb(
+    const newWin = getPlayerPerspectiveWinProb(
       playerPool.length,
       newComputerPool.length,
       true
     );
     setWinProb(newWin);
-
-    // Hand control back to the human player
+    setLastMoveQuality(null);
     setPlayerTurn(true);
   };
 
@@ -1464,64 +1137,15 @@ setLastMoveQuality(quality || null);
           <button onClick={startGame} className="start-game-btn">
             Start Corrected Game
           </button>
+
           <div className="key-difference">
-            <h4>Key Difference</h4>
+            <h4>Key Rule Differences</h4>
             <ul>
-              <li>
-                ✅ Players must make an <strong>exact guess</strong> to win
-              </li>
-              <li>✅ Death Valley state is preserved</li>
-              <li>✅ Both players get equal turns</li>
-              <li>❌ No auto-win when pool reaches 1</li>
+              <li>✅ Must make an exact guess to win</li>
+              <li>✅ Death Valley (n=1 but not your turn) is preserved</li>
+              <li>✅ Bot uses DP V(n,m) with guess vs question</li>
+              <li>❌ No auto-win just for reaching n=1</li>
             </ul>
-
-            <div
-              style={{
-                marginTop: "1.5rem",
-                padding: "1rem",
-                background: "#e0e7ff",
-                borderRadius: "8px",
-                fontSize: "0.95rem",
-              }}
-            >
-              <strong style={{ color: "#1e40af" }}>How to Play:</strong>
-              <p
-                style={{
-                  color: "#1e40af",
-                  marginTop: "0.5rem",
-                  marginBottom: 0,
-                }}
-              >
-                Click numbers from your possibilities to select your guess range.
-                Click one number for an exact guess, or two numbers to ask about
-                a range. You can only select from numbers currently in your pool.
-              </p>
-            </div>
-
-            <div
-              style={{
-                marginTop: "1rem",
-                padding: "1rem",
-                background: "#e0e7ff",
-                borderRadius: "8px",
-                fontSize: "0.95rem",
-              }}
-            >
-              <strong style={{ color: "#1e40af" }}>Computer Strategy:</strong>
-              <p
-                style={{
-                  color: "#1e40af",
-                  marginTop: "0.5rem",
-                  marginBottom: 0,
-                }}
-              >
-                The computer uses a single{" "}
-                <strong>Optimal Death Valley DP</strong> strategy. It precomputes
-                the win value <code>V(n, m)</code> and chooses the bid size{" "}
-                <code>b*(n, m)</code> that maximizes its long-run win probability
-                under the corrected, turn-based rules.
-              </p>
-            </div>
           </div>
         </div>
       ) : (
@@ -1545,41 +1169,22 @@ setLastMoveQuality(quality || null);
               <div className="pool-count">
                 {playerPool.length} possibilities
               </div>
-              {playerWinProb !== null && (
-  <div className="win-prob">
-    Win chance: <span className="prob-number">
-      {(playerWinProb * 100).toFixed(1)}%
-    </span>
-  </div>
-)}
 
-{lastMoveQuality && (
-  <div className={`move-quality move-${lastMoveQuality.category}`}>
-    <span className="move-icon">{lastMoveQuality.icon}</span>
-    <span className="move-label">{lastMoveQuality.label}</span>
-  </div>
-)}
-
-
-              {/* Live engine eval for P1 */}
               {winProb !== null && (
                 <div className="win-prob">
-                  <span>Engine estimate:</span>
+                  Live win chance:{" "}
                   <span className="prob-number">
                     {(winProb * 100).toFixed(1)}%
                   </span>
                 </div>
               )}
 
-              {/* Last move quality pill */}
               {lastMoveQuality && (
                 <div
                   className={`move-quality move-${lastMoveQuality.category}`}
                 >
                   <span className="move-icon">{lastMoveQuality.icon}</span>
-                  <span className="move-label">
-                    {lastMoveQuality.label}
-                  </span>
+                  <span className="move-label">{lastMoveQuality.label}</span>
                 </div>
               )}
 
@@ -1611,11 +1216,10 @@ setLastMoveQuality(quality || null);
 
           {!winner && playerTurn && (
             <div className="player-controls">
-              <h4>Your Turn - Select Numbers to Guess</h4>
+              <h4>Your Turn – Choose an Exact Guess or a Range</h4>
               <p className="instruction-text">
-                Click numbers from your possibilities above to select a range.
-                Click one number for an exact guess, or two numbers to ask about
-                a range.
+                Click numbers in your pool above. Click one number for an exact
+                guess, or two numbers to ask about a contiguous range.
               </p>
               <button
                 onClick={makeRangeGuess}
@@ -1627,8 +1231,7 @@ setLastMoveQuality(quality || null);
                     selectedNumbers.length === 0 ? "not-allowed" : "pointer",
                 }}
               >
-                {selectedNumbers.length === 0 &&
-                  "Select numbers to make a guess"}
+                {selectedNumbers.length === 0 && "Select numbers to make a move"}
                 {selectedNumbers.length === 1 &&
                   `Ask: Is your number ${selectedNumbers[0]}?`}
                 {selectedNumbers.length === 2 &&
@@ -1667,35 +1270,46 @@ setLastMoveQuality(quality || null);
       )}
 
       <div className="code-download">
-        <h4>Download Full Python Implementation</h4>
-        <p>The complete marimo notebook with optimal strategy computation and corrected turn-based rules.</p>
+        <h4>Notes</h4>
+        <p>
+          Live win% is computed from the full Death Valley DP V(n,m) and updates
+          after every move. Move-quality badges are evaluated purely from how
+          your real odds change on the actual branch, plus brilliant flags for
+          engine-defying and long-shot hits.
+        </p>
       </div>
     </div>
   );
 };
 
-// Styles Component
+// =======================
+// Styles
+// =======================
 const Styles = () => (
   <style>{`
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Georgia, serif; line-height: 1.7; color: #1a1a1a; background: #fafaf9; }
     .analysis-container { min-height: 100vh; }
     .scroll-progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #7c3aed); z-index: 1000; transition: width 0.1s ease; }
-    
+
     .hero { min-height: 90vh; display: flex; align-items: center; justify-content: center; padding: 4rem 2rem; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; }
     .hero-content { max-width: 900px; }
     .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; margin-bottom: 1rem; line-height: 1.2; }
     .hero h2 { font-size: clamp(1.2rem, 3vw, 1.8rem); font-weight: 400; margin-bottom: 2rem; color: #cbd5e1; }
     .subtitle { font-size: 1.1rem; color: #94a3b8; line-height: 1.8; }
-    
+
     .section { padding: 5rem 2rem; }
     .section.alt { background: white; }
+    .section.corrected-game { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+    .section.corrected-game h2 { color: white; }
+    .section.corrected-game p { color: #e2e8f0; }
+
     .content { max-width: 800px; margin: 0 auto; }
     .section h2 { font-size: 2.5rem; margin-bottom: 2rem; color: #0f172a; font-weight: 700; }
     .section p { margin-bottom: 1.5rem; font-size: 1.1rem; color: #334155; }
     .emphasis { font-style: italic; color: #1e40af; font-weight: 500; }
     .emphasis.large { font-size: 1.5rem; line-height: 1.6; text-align: center; }
-    
+
     .video-card { margin: 2rem 0; border: 2px solid #e2e8f0; border-radius: 12px; overflow: hidden; transition: all 0.3s ease; }
     .video-card:hover { border-color: #3b82f6; box-shadow: 0 10px 40px rgba(59, 130, 246, 0.1); transform: translateY(-2px); }
     .video-card a { display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem; text-decoration: none; color: inherit; }
@@ -1703,160 +1317,128 @@ const Styles = () => (
     .video-info { flex: 1; }
     .video-title { font-weight: 600; font-size: 1.1rem; color: #1e293b; margin-bottom: 0.25rem; }
     .video-date { color: #64748b; font-size: 0.9rem; }
-    
+
     .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin: 3rem 0; }
     .stat { text-align: center; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); }
     .stat-value { font-size: 3rem; font-weight: 700; color: #2563eb; margin-bottom: 0.5rem; }
     .stat-label { color: #64748b; font-size: 0.95rem; }
-    
+
     .paper-card { background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%); padding: 2rem; border-radius: 12px; border-left: 4px solid #3b82f6; margin: 2rem 0; }
     .paper-title { font-size: 1.3rem; font-weight: 600; color: #1e293b; margin-bottom: 1rem; }
     .paper-versions { display: flex; gap: 2rem; font-size: 0.95rem; color: #475569; }
-    
+
     .callout { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1.5rem; margin: 2rem 0; border-radius: 8px; }
     .callout strong { display: block; margin-bottom: 1rem; color: #92400e; }
     .callout ul { list-style: none; padding-left: 0; }
     .callout li { padding: 0.5rem 0; color: #78350f; }
     .callout li::before { content: '→'; margin-right: 0.75rem; color: #f59e0b; }
-    
+
     .discovery-list { list-style: none; padding: 0; }
     .discovery-list li { padding: 1rem; margin: 1rem 0; background: #fee2e2; border-left: 4px solid #dc2626; border-radius: 8px; color: #7f1d1d; }
-    
+
     .math-block-container { background: white; padding: 2rem; border-radius: 12px; margin: 2rem 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); }
     .math-block-container h3 { color: #1e293b; margin-bottom: 1rem; font-size: 1.4rem; }
     .formula-display { background: #f8fafc; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; text-align: center; font-family: 'Courier New', monospace; font-size: 1.1rem; }
     .quote { font-style: italic; color: #475569; padding-left: 1rem; border-left: 3px solid #cbd5e1; }
-    
+
     .game-playback { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); margin: 3rem 0; }
     .playback-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #e2e8f0; }
     .control-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: all 0.2s; font-family: inherit; }
-    .control-btn:hover { background: #2563eb; transform: translateY(-2px); }
+    .control-btn:hover:not(:disabled) { background: #2563eb; transform: translateY(-2px); }
     .move-indicator { margin-left: auto; font-weight: 600; color: #475569; }
-    
+
     .game-state { display: grid; grid-template-columns: 1fr auto 1fr; gap: 2rem; align-items: start; }
-    .player-state { background: #f8fafc; border-radius: 12px; padding: 1.5rem; min-height: 300px; }
+    .player-state { background: #f8fafc; border-radius: 12px; padding: 1.5rem; min-height: 260px; }
     .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .player-header h3 { color: #1e293b; font-size: 1.2rem; }
     .pool-size { background: #3b82f6; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.9rem; }
+
     .move-display { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 0.75rem; background: white; border-radius: 8px; }
     .question { font-weight: 600; color: #1e293b; }
     .answer { padding: 0.25rem 0.75rem; border-radius: 4px; font-weight: 600; font-size: 0.9rem; }
     .answer.yes { background: #dcfce7; color: #166534; }
     .answer.no { background: #fee2e2; color: #991b1b; }
+
     .candidate-pool { display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .candidate { background: #e0e7ff; color: #3730a3; padding: 0.5rem 0.75rem; border-radius: 6px; font-weight: 600; }
+
     .winner-badge { margin-top: 1rem; padding: 1rem; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; text-align: center; font-weight: 600; color: #92400e; }
     .skipped-badge { margin-top: 1rem; padding: 1rem; background: #fee2e2; border: 2px solid #dc2626; border-radius: 8px; text-align: center; font-weight: 600; color: #991b1b; }
     .vs-divider { display: flex; align-items: center; justify-content: center; color: #cbd5e1; }
-    
+
     .analysis-box { background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 2rem; margin: 3rem 0; }
     .analysis-box h3 { color: #92400e; margin-bottom: 1rem; }
-    .analysis-box ul { list-style: none; padding: 0; }
-    .analysis-box li { padding: 0.5rem 0; color: #78350f; }
-    .analysis-box li::before { content: '✓'; margin-right: 0.75rem; color: #f59e0b; font-weight: 700; }
-    
+
     .death-valley-section { background: white; }
-    .death-valley-section h2 { color: #0f172a; }
-    .death-valley-section h3 { color: #1e293b; }
-    .death-valley-section p { color: #334155; }
-    .death-valley-section .emphasis { color: #1e40af; }
     .death-valley { margin: 3rem 0; padding: 2rem; background: #f8fafc; border-radius: 16px; border: 2px solid #e2e8f0; }
     .valley-state { padding: 2rem; border-radius: 12px; transition: all 0.6s ease; }
     .valley-state.safe { background: #dcfce7; border: 2px solid #22c55e; }
     .valley-state.danger { background: #fee2e2; border: 2px solid #ef4444; }
     .valley-state.critical { animation: dangerPulse 2s ease infinite; }
-    @keyframes dangerPulse { 0%, 100% { border-color: #ef4444; background: #fee2e2; } 50% { border-color: #dc2626; background: #fecaca; } }
+    @keyframes dangerPulse {
+      0%, 100% { border-color: #ef4444; background: #fee2e2; }
+      50% { border-color: #dc2626; background: #fecaca; }
+    }
     .valley-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
     .valley-header h4 { font-size: 1.5rem; color: #1e293b; }
-    .valley-formula { font-family: 'Courier New', monospace; font-size: 1.2rem; padding: 0.5rem 1rem; background: #e0e7ff; border-radius: 6px; color: #3730a3; }
+    .valley-formula { font-family: 'Courier New', monospace; font-size: 1.1rem; padding: 0.5rem 1rem; background: #e0e7ff; border-radius: 6px; color: #3730a3; }
     .valley-pool { display: flex; gap: 1rem; justify-content: center; margin: 2rem 0; }
     .valley-card { width: 80px; height: 100px; background: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: #1e293b; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); border: 2px solid #e2e8f0; }
     .valley-card.pulse { animation: cardPulse 1s ease infinite; }
-    @keyframes cardPulse { 0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); border-color: #ef4444; } 50% { transform: scale(1.05); box-shadow: 0 8px 30px rgba(239, 68, 68, 0.6); border-color: #dc2626; } }
+    @keyframes cardPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); border-color: #ef4444; }
+      50% { transform: scale(1.05); box-shadow: 0 8px 30px rgba(239, 68, 68, 0.6); border-color: #dc2626; }
+    }
     .warning-text { text-align: center; padding: 1rem; background: #fee2e2; border-radius: 8px; font-weight: 600; color: #991b1b; margin-top: 1rem; border: 2px solid #ef4444; }
     .declare-text { text-align: center; padding: 1rem; background: #dcfce7; border-radius: 8px; font-weight: 600; color: #166534; margin-top: 1rem; border: 2px solid #22c55e; }
     .phase-dots { display: flex; justify-content: center; gap: 0.75rem; margin-top: 2rem; }
     .dot { width: 12px; height: 12px; border-radius: 50%; background: #cbd5e1; transition: all 0.3s; }
     .dot.active { background: #3b82f6; transform: scale(1.5); }
-    
+
     .definition-box { background: #dbeafe; border: 2px solid #3b82f6; border-radius: 12px; padding: 2rem; margin: 2rem 0; }
-    .definition-box h3 { color: #1e40af; margin-bottom: 1rem; }
-    .definition-box p { color: #1e293b; }
-    
+
     .impact-grid { margin: 3rem 0; }
     .impact-grid h3 { color: #1e40af; margin-bottom: 2rem; font-size: 1.5rem; }
-    .impact-item { display: flex; gap: 1rem; align-items: start; padding: 1rem; margin: 1rem 0; background: #f8fafc; border-radius: 8px; transition: all 0.3s; border: 2px solid #e2e8f0; }
-    .impact-item:hover { background: #f1f5f9; transform: translateX(10px); border-color: #3b82f6; }
+    .impact-item { display: flex; gap: 1rem; align-items: start; padding: 1rem; margin: 1rem 0; background: #f8fafc; border-radius: 8px; border: 2px solid #e2e8f0; }
     .impact-icon { font-size: 1.5rem; flex-shrink: 0; }
-    .impact-text { color: #334155; line-height: 1.6; }
-    
-    .contrast-box { background: #dcfce7; border: 2px solid #22c55e; border-radius: 12px; padding: 2rem; margin: 2rem 0; }
-    .contrast-box h3 { color: #166534; margin-bottom: 1rem; }
-    .contrast-box ul { list-style: none; padding: 0; }
-    .contrast-box li { padding: 0.5rem 0; color: #15803d; }
-    .contrast-box li::before { content: '→'; margin-right: 0.75rem; color: #22c55e; }
-    .contrast-box p { color: #15803d; }
-    .contrast-box .emphasis { color: #166534; font-weight: 600; }
-    
+    .impact-text { color: #334155; }
+
     .state-tree { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); margin: 3rem 0; }
     .tree-header h3 { color: #1e293b; margin-bottom: 2rem; text-align: center; font-size: 1.8rem; }
     .tree-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
     .tree-col h4 { color: #475569; margin-bottom: 1.5rem; text-align: center; font-size: 1.2rem; padding-bottom: 1rem; border-bottom: 2px solid #e2e8f0; }
     .tree-nodes { display: flex; flex-direction: column; gap: 1rem; }
-    .node { padding: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; text-align: center; font-weight: 500; color: #334155; transition: all 0.3s; }
-    .node:hover { transform: translateX(5px); border-color: #3b82f6; }
+    .node { padding: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; text-align: center; font-weight: 500; color: #334155; }
     .node.winner { background: #dcfce7; border-color: #22c55e; color: #166534; font-weight: 700; }
     .node.skipped { background: #fee2e2; border-color: #dc2626; color: #991b1b; font-weight: 700; }
     .node.death-valley { background: #fef3c7; border-color: #f59e0b; color: #92400e; font-weight: 700; }
-    
+
     .conclusion { background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%); }
     .final-thoughts { margin-top: 2rem; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); }
-    .final-thoughts p { margin-bottom: 1rem; }
-    
-    .corrected-game { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-    .corrected-game h2 { color: white; }
-    .corrected-game p { color: #e2e8f0; }
+
     .disclaimer { font-size: 0.95rem; color: #94a3b8; font-style: italic; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; border-left: 3px solid #60a5fa; margin-bottom: 2rem; }
-    
+
     .corrected-game-container { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); }
     .game-start { text-align: center; padding: 3rem 2rem; }
-    .start-game-btn { padding: 1.5rem 3rem; font-size: 1.3rem; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3); font-family: inherit; }
+    .start-game-btn { padding: 1.5rem 3rem; font-size: 1.3rem; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s; font-family: inherit; }
     .start-game-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(59, 130, 246, 0.4); }
-    
+
     .key-difference { margin-top: 3rem; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto; padding: 2rem; background: #f8fafc; border-radius: 12px; }
-    .key-difference h4 { color: #1e293b; margin-bottom: 1rem; }
-    .key-difference ul { list-style: none; padding: 0; }
-    .key-difference li { padding: 0.5rem 0; color: #334155; display: flex; align-items: start; gap: 0.5rem; }
-    
+
     .game-state-display { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
     .player-status, .computer-status { padding: 1.5rem; background: #f8fafc; border-radius: 12px; }
     .player-status h4, .computer-status h4 { color: #1e293b; margin-bottom: 1rem; }
-    .pool-display { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; min-height: 80px; }
-    .pool-display-interactive { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; min-height: 80px; }
+
+    .pool-display, .pool-display-interactive { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; min-height: 80px; }
     .pool-number { background: #e0e7ff; color: #3730a3; padding: 0.5rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem; }
+    .pool-number.computer { background: #fecaca; color: #991b1b; }
     .pool-number-clickable { background: #e0e7ff; color: #3730a3; padding: 0.5rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
     .pool-number-clickable:hover { background: #c7d2fe; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
     .pool-number-clickable.selected { background: #3b82f6; color: white; border-color: #1e40af; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5); }
-    .pool-number.computer { background: #fecaca; color: #991b1b; }
-    .pool-count { color: #64748b; font-size: 0.9rem; font-weight: 600; }
-        .win-prob {
-      margin-top: 0.75rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.35rem 0.9rem;
-      border-radius: 999px;
-      background: #e0f2fe;
-      color: #0f172a;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .win-prob .prob-number {
-      font-family: 'Courier New', monospace;
-      font-weight: 700;
-    }
 
-        .win-prob {
+    .pool-count { color: #64748b; font-size: 0.9rem; font-weight: 600; }
+
+    .win-prob {
       margin-top: 0.75rem;
       display: inline-flex;
       align-items: center;
@@ -1879,7 +1461,7 @@ const Styles = () => (
       align-items: center;
       gap: 0.4rem;
       padding: 0.35rem 0.9rem;
-      border-radius: 999px;           /* pill / circle feeling */
+      border-radius: 999px;
       font-size: 0.85rem;
       font-weight: 600;
     }
@@ -1893,11 +1475,8 @@ const Styles = () => (
       justify-content: center;
       min-width: 1.4rem;
     }
-    .move-label {
-      white-space: nowrap;
-    }
 
-    /* Brilliant: purple circle, three white exclamations */
+    /* brilliant: purple circle, ??? */
     .move-brilliant {
       background: #f5f3ff;
       color: #5b21b6;
@@ -1908,7 +1487,7 @@ const Styles = () => (
       box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.6);
     }
 
-    /* Best: light blue circle with two exclamation points */
+    /* best: light blue circle, !! */
     .move-best {
       background: #eff6ff;
       color: #1d4ed8;
@@ -1919,7 +1498,7 @@ const Styles = () => (
       box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
     }
 
-    /* Great: green star */
+    /* great: green star */
     .move-great {
       background: #ecfdf5;
       color: #166534;
@@ -1930,7 +1509,7 @@ const Styles = () => (
       box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5);
     }
 
-    /* Good: greyed green with checkmark up */
+    /* good: greyed green check */
     .move-good {
       background: #f1f5f9;
       color: #14532d;
@@ -1941,7 +1520,7 @@ const Styles = () => (
       box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.3);
     }
 
-    /* Inaccuracy: yellow with ?! */
+    /* inaccuracy: yellow ?! */
     .move-inaccuracy {
       background: #fefce8;
       color: #92400e;
@@ -1952,7 +1531,7 @@ const Styles = () => (
       box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.6);
     }
 
-    /* Mistake: dark orange question mark */
+    /* mistake: dark orange ? */
     .move-mistake {
       background: #ffedd5;
       color: #c2410c;
@@ -1963,84 +1542,70 @@ const Styles = () => (
       box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.6);
     }
 
-    /* Blunder: three question marks in dark red */
+    /* blunder: red !!! */
     .move-blunder {
       background: #fee2e2;
       color: #b91c1c;
-      box-shadow: 0 0 0 1px rgba(185, 28, 28, 0.3);
     }
     .move-blunder .move-icon {
       background: #fecaca;
       color: #7f1d1d;
       box-shadow: 0 0 0 1px rgba(185, 28, 28, 0.8);
     }
+
     .selection-display { margin-top: 1rem; padding: 0.75rem; background: #dbeafe; border-radius: 8px; color: #1e40af; font-weight: 600; text-align: center; }
-    
+
     .player-controls { background: #dbeafe; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; }
     .player-controls h4 { color: #1e40af; margin-bottom: 1rem; }
     .instruction-text { color: #1e40af; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.6; }
-    .range-controls { display: flex; gap: 2rem; margin-bottom: 1rem; align-items: flex-end; }
-    .range-control label { display: block; margin-bottom: 0.5rem; color: #1e40af; font-weight: 600; }
-    .number-spinner { display: flex; gap: 0.5rem; align-items: center; }
-    .number-spinner button { padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1.2rem; font-family: inherit; transition: all 0.2s; }
-    .number-spinner button:hover { background: #2563eb; }
-    .number-spinner button:disabled { background: #cbd5e1; cursor: not-allowed; }
-    .number-display { padding: 0.75rem 1.5rem; background: white; border-radius: 6px; font-weight: 600; font-size: 1.2rem; min-width: 60px; text-align: center; }
-    .guess-btn { width: 100%; padding: 1rem; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .guess-btn { width: 100%; padding: 1rem; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; }
     .guess-btn:hover:not(:disabled) { background: #2563eb; transform: translateY(-2px); }
-    
+
     .waiting { text-align: center; padding: 2rem; background: #f8fafc; border-radius: 12px; margin-bottom: 2rem; }
     .spinner { font-size: 2rem; animation: spin 2s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .waiting p { color: #64748b; margin-top: 1rem; }
-    
+
     .game-over { text-align: center; padding: 3rem 2rem; border-radius: 12px; margin-bottom: 2rem; }
     .game-over.player { background: #dcfce7; border: 3px solid #22c55e; }
     .game-over.computer { background: #fee2e2; border: 3px solid #ef4444; }
     .game-over h3 { font-size: 2rem; margin-bottom: 1rem; }
     .game-over.player h3 { color: #166534; }
     .game-over.computer h3 { color: #991b1b; }
-    .play-again-btn { padding: 1rem 2rem; background: #1e293b; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .play-again-btn { padding: 1rem 2rem; background: #1e293b; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; }
     .play-again-btn:hover { background: #0f172a; transform: translateY(-2px); }
-    
+
     .game-log { background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; }
     .game-log h4 { color: #1e293b; margin-bottom: 1rem; }
     .log-entries { max-height: 300px; overflow-y: auto; }
     .log-entry { padding: 0.5rem; margin: 0.25rem 0; background: white; border-radius: 6px; font-size: 0.95rem; color: #334155; font-family: 'Courier New', monospace; }
-    
+
     .code-download { background: #f1f5f9; padding: 2rem; border-radius: 12px; text-align: center; }
-    .code-download h4 { color: #1e293b; margin-bottom: 0.5rem; }
-    .code-download p { color: #64748b; margin-bottom: 1.5rem; }
-    
+
     .nica-response { background: #f8fafc; }
     .conversation { margin: 2rem 0; }
     .message { margin: 1rem 0; padding: 1rem 1.25rem; border-radius: 8px; }
     .message.dylan { background: white; border-left: 3px solid #3b82f6; }
     .message.nica { background: #e0e7ff; border-left: 3px solid #6366f1; }
     .message-header { margin-bottom: 0.75rem; }
-    .message-header strong { color: #1e293b; font-size: 0.95rem; }
     .message-content p { margin-bottom: 0.75rem; color: #334155; line-height: 1.7; font-size: 0.95rem; }
-    .message-content p:last-child { margin-bottom: 0; }
+
     .reflection-box { background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #3b82f6; margin-top: 2rem; }
-    .reflection-box h3 { color: #1e40af; margin-bottom: 0.75rem; font-size: 1.2rem; }
-    .reflection-box p { color: #334155; margin-bottom: 0.75rem; line-height: 1.7; font-size: 0.95rem; }
-    .reflection-box p:last-child { margin-bottom: 0; }
-    
+
     .footer { background: #0f172a; color: white; padding: 3rem 2rem; }
     .footer-content { max-width: 800px; margin: 0 auto; text-align: center; }
     .contact { display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-size: 1.1rem; margin-bottom: 1rem; color: #60a5fa; }
     .footer-note { color: #94a3b8; font-size: 0.95rem; }
-    
+
     @media (max-width: 768px) {
       .game-state { grid-template-columns: 1fr; }
       .vs-divider { transform: rotate(90deg); margin: 1rem 0; }
       .tree-columns { grid-template-columns: 1fr; }
       .stat-grid { grid-template-columns: 1fr; }
       .game-state-display { grid-template-columns: 1fr; }
-      .range-controls { flex-direction: column; align-items: stretch; }
       .pool-display-interactive { justify-content: center; }
-      .message { padding: 1rem; }
-      .message-content p { font-size: 1rem; }
+      .section { padding: 3rem 1.25rem; }
     }
   `}</style>
 );
+
