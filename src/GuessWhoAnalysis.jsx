@@ -141,7 +141,7 @@ export default function GuessWhoAnalysis() {
           <div className="callout">
             <strong>The Mathematical Model</strong>
             <ul>
-              <li>Each player secretly chooses a number in {{ }["{1,…,N}"]}</li>
+              <li>Each player secretly chooses a number in {"{1,…,N}"}</li>
               <li>Moves are questions of the form [a,b]?</li>
               <li>Answers are YES or NO, and each answer shrinks the pool</li>
             </ul>
@@ -226,7 +226,7 @@ export default function GuessWhoAnalysis() {
             <h3>The Critical Moment</h3>
             <p>
               After asking &quot;Is your number 4?&quot; and getting NO, your pool
-              is {{ }["{5}"]} so n=1. The simulator instantly ends the game in your
+              is {"{5}"} so n=1. The simulator instantly ends the game in your
               favor.
             </p>
             <p className="emphasis">
@@ -380,7 +380,8 @@ export default function GuessWhoAnalysis() {
           <p className="disclaimer">
             This implementation uses a dynamic program on V(n,m) that keeps the
             Death Valley state and requires exact guesses to win. The bot plays
-            (approximately) optimally according to that DP.
+            (approximately) optimally according to that DP. Both players' moves
+            are now evaluated for quality!
           </p>
 
           <CorrectedGame />
@@ -720,49 +721,62 @@ const StateTree = () => {
 };
 
 // =======================
-// Death Valley DP + Evaluation
+// Death Valley DP + Soft-Guess Engine
 // =======================
 
 const MAX_POOL_SIZE = 20;
 
-const dvValueMemo = new Map();   // "n,m" -> V(n,m)
-const dvBestBidMemo = new Map(); // "n,m" -> best b (if question beats guess)
+// V(n,m): win prob for the player TO MOVE,
+// when they have n candidates and opponent has m,
+// under soft-guess rules (miss = pass turn with n-1).
+const dvValueMemo = new Map();
+const dvBestBidMemo = new Map(); // 0 => "guess", >0 => best question size
 
 const dvKey = (n, m) => `${n},${m}`;
 
+// Core DP with SOFT GUESS
 function dvValue(n, m) {
-  if (n <= 0 || m <= 0) return 0.5;
+  if (n <= 0 || m <= 0) return 0.5; // should never appear
+  if (n === 1) return 1.0;          // you know the answer on your turn
 
   const key = dvKey(n, m);
   const cached = dvValueMemo.get(key);
   if (cached !== undefined) return cached;
 
-  // Option 1: guess now
-  let bestVal = 1 / n;
-  let bestB = 0;
+  // --- 1. EV of GUESSING (soft guess) ---
+  // P(correct) * 1 + P(wrong) * (1 - V(m, n-1))
+  const winNow = 1 / n;
+  const surviveLater = ((n - 1) / n) * (1 - dvValue(m, n - 1));
+  const guessEV = winNow + surviveLater;
 
-  // Option 2: ask question of size b
+  let bestVal = guessEV;
+  let bestB = 0; // 0 == "guess"
+
+  // --- 2. EV of ASKING ---
+  // ask [a,b] of size b; yes => (b, m) with opponent to move; no => (n-b, m).
+  // Tie goes to GUESS (agency).
   if (n > 1) {
     for (let b = 1; b <= n - 1; b++) {
       const pYes = b / n;
-      const valYes = 1 - dvValue(m, b);      // opponent to move in (m,b)
-      const valNo = 1 - dvValue(m, n - b);   // opponent to move in (m,n-b)
-      const ev = pYes * valYes + (1 - pYes) * valNo;
-      if (ev > bestVal + 1e-12) {
-        bestVal = ev;
+      const valYes = 1 - dvValue(m, b);
+      const valNo = 1 - dvValue(m, n - b);
+      const askEV = pYes * valYes + (1 - pYes) * valNo;
+
+      if (askEV > bestVal + 1e-9) {
+        bestVal = askEV;
         bestB = b;
       }
     }
   }
 
   dvValueMemo.set(key, bestVal);
-  if (bestB > 0) {
-    dvBestBidMemo.set(key, bestB);
-  }
+  dvBestBidMemo.set(key, bestB); // 0 means "guess"
   return bestVal;
 }
 
 function precomputeDeathValleyStrategy() {
+  dvValueMemo.clear();
+  dvBestBidMemo.clear();
   for (let n = 1; n <= MAX_POOL_SIZE; n++) {
     for (let m = 1; m <= MAX_POOL_SIZE; m++) {
       dvValue(n, m);
@@ -771,146 +785,254 @@ function precomputeDeathValleyStrategy() {
 }
 precomputeDeathValleyStrategy();
 
-// If dvBestBidMemo has no b for (n,m), guessing is optimal (or tied)
+// Bot action: trust DP (no hacks needed)
 function getOptimalBotAction(n, m) {
-  if (n <= 1) {
-    return { type: "guess" };
-  }
+  if (n <= 1) return { type: "guess" };
+
   const key = dvKey(n, m);
-  const b = dvBestBidMemo.get(key);
-  if (b === undefined) {
+  const bestB = dvBestBidMemo.get(key);
+
+  if (!bestB || bestB === 0) {
+    // DP says guessing is optimal (or only legal)
     return { type: "guess" };
   }
-  return { type: "question", b };
+  return { type: "question", b: bestB };
 }
 
-// Player 1 (human) win probability from current state
+// Win prob from PLAYER'S perspective, for display
 function getPlayerPerspectiveWinProb(nPlayer, nComputer, isPlayerTurn) {
-  if (nPlayer <= 0 || nComputer <= 0) return 0.5;
+  if (nPlayer <= 0 || nComputer <= 0) return 0.0;
 
-  // dvValue(n, m) = win prob for *player to move* with pool sizes (n, m)
   if (isPlayerTurn) {
-    // Your turn → just V(nPlayer, nComputer)
+    // player's turn, so use V(nPlayer, nComputer)
     return dvValue(nPlayer, nComputer);
   } else {
-    // Bot's turn → bot is "player to move", so your chance is the complement
+    // computer's turn: player's win prob = 1 - V(nComputer, nPlayer)
     return 1 - dvValue(nComputer, nPlayer);
   }
 }
 
-// Move quality evaluation
-function evaluatePlayerMoveQuality({
+// =======================
+// Move Evaluation (Soft-Guess + Equity Swing + Agency)
+// =======================
+
+function evaluateMoveQuality({
   nBefore,
   mBefore,
-  b,
-  preWin,
-  branchWin,
+  nAfter,
+  mAfter,
+  isPlayerMove,      // true if human moved, false if bot moved
+  isGuess,           // true for guess, false for question
+  b,                 // question size if isGuess === false
+  preWin,            // player's win prob BEFORE move
+  postWin            // player's win prob AFTER move
 }) {
-  if (nBefore <= 1 || b <= 0 || b >= nBefore) return null;
+  // ---- 1. Compute actor's EV: optimal vs actual ----
+  let actorN, actorM;
 
-  const optimalVal = dvValue(nBefore, mBefore);
-  const optimalB = dvBestBidMemo.get(dvKey(nBefore, mBefore)) ?? null;
-
-  const pYes = b / nBefore;
-  const valYes = 1 - dvValue(mBefore, b);
-  const valNo = 1 - dvValue(mBefore, nBefore - b);
-  const actualEV = pYes * valYes + (1 - pYes) * valNo;
-  const evLoss = Math.max(0, optimalVal - actualEV);
-
-  const branchGain = branchWin - preWin;
-  const branchDrop = preWin - branchWin;
-
-  const HUGE_GAIN = 0.15;
-  const LONG_SHOT_BASELINE = 0.25;
-  const LONG_SHOT_TARGET = 0.9;
-
-  // === Long-shot brilliant: you were basically dead, low-odds shot hits ===
-  if (
-    preWin <= LONG_SHOT_BASELINE &&
-    b === 1 &&
-    nBefore >= 4 &&
-    branchWin >= LONG_SHOT_TARGET
-  ) {
-    return {
-      category: "brilliant",
-      label: "Brilliant long-shot (beating the odds)",
-      icon: "???",
-    };
+  if (isPlayerMove) {
+    actorN = nBefore;
+    actorM = mBefore;
+  } else {
+    // For the bot, its candidate count is mBefore, opponent's is nBefore
+    actorN = mBefore;
+    actorM = nBefore;
   }
 
-  // === Engine-brilliant: suboptimal line but huge real improvement ===
-  if (
-    optimalB !== null &&
-    b !== optimalB &&
-    evLoss > 0.01 &&
-    branchGain >= HUGE_GAIN &&
-    branchWin >= optimalVal - 1e-6
-  ) {
-    return {
-      category: "brilliant",
-      label: "Brilliant (non-engine idea, huge improvement)",
-      icon: "???",
-    };
+  // Optimal EV for the side to move from this state
+  const optimalValForActor = dvValue(actorN, actorM);
+
+  // Helper: EV of guessing for the actor (soft-guess)
+  function guessEVForActor(n, m) {
+    const winNow = 1 / n;
+    const surviveLater =
+      ((n - 1) / n) * (1 - dvValue(m, n - 1));
+    return winNow + surviveLater;
   }
 
-  // === Best move: matched engine line and didn’t damage your eval ===
-  if (optimalB !== null && b === optimalB && branchDrop <= 0.005) {
-    return {
-      category: "best",
-      label: "Best move (engine line)",
-      icon: "!!",
-    };
+  // Helper: EV of asking a question of size b for the actor
+  function questionEVForActor(n, m, qSize) {
+    if (!qSize || qSize <= 0 || qSize >= n) return null;
+    const pYes = qSize / n;
+    const valYes = 1 - dvValue(m, qSize);
+    const valNo = 1 - dvValue(m, n - qSize);
+    return pYes * valYes + (1 - pYes) * valNo;
   }
 
-  // === Everything else: classify by how much your odds changed ===
+  const guessEV = guessEVForActor(actorN, actorM);
+  let actualEVForActor;
+
+  if (isGuess) {
+    actualEVForActor = guessEV;
+  } else {
+    const qSize = isPlayerMove ? b : b; // same b, just different actorN/actorM
+    actualEVForActor = questionEVForActor(actorN, actorM, qSize);
+    if (actualEVForActor === null) return null;
+  }
+
+  const decisionError = Math.max(0, optimalValForActor - actualEVForActor);
+
+  // ---- 2. Equity swing from the PLAYER'S POV ----
+  const startWinProb = preWin;
+  const endWinProb = postWin;
+  const equitySwing = endWinProb - startWinProb;
+
+  // ---- 3. Badge selection based purely on decisionError ----
+  // Tight EV thresholds (tweak if you like)
+  const BEST_EPS    = 0.005; // <0.5% from optimal
+  const GREAT_EPS   = 0.02;  // <2% from optimal
+  const GOOD_EPS    = 0.05;  // <5% from optimal
+  const MISTAKE_EPS = 0.12;  // <12% from optimal
+
   let category = "good";
   let label = "Good move";
   let icon = "✓";
 
-  if (branchGain >= 0.05) {
+  if (decisionError < BEST_EPS) {
+    category = "best";
+    label = "Best move";
+    icon = "!!";
+  } else if (decisionError < GREAT_EPS) {
     category = "great";
     label = "Great move";
     icon = "★";
-  } else if (branchGain >= 0.01) {
+  } else if (decisionError < GOOD_EPS) {
     category = "good";
     label = "Good move";
     icon = "✓";
-  } else if (branchDrop <= 0.03) {
-    category = "good";
-    label = "Good / neutral move";
-    icon = "✓";
-  } else if (branchDrop <= 0.08) {
-    category = "inaccuracy";
-    label = "Inaccuracy";
-    icon = "!?";
-  } else if (branchDrop <= 0.20) {
+  } else if (decisionError < MISTAKE_EPS) {
     category = "mistake";
     label = "Mistake";
     icon = "?";
   } else {
     category = "blunder";
     label = "Blunder";
-    icon = "!!!";
+    icon = "??";
   }
 
-  return { category, label, icon };
+  // ---- 4. Optional "passive play" overlay for true near-ties ----
+  // Only applies if actor had a viable guess AND chose a question AND
+  // BOTH guessEV and actualEV are in the same tiny band around optimal.
+  if (!isGuess) {
+    const PASSIVE_BAND = 0.005; // 0.5% band for "true tie"
+
+    const guessNearOpt =
+      Math.abs(guessEV - optimalValForActor) < PASSIVE_BAND;
+    const actualNearOpt =
+      Math.abs(actualEVForActor - optimalValForActor) < PASSIVE_BAND;
+
+    // Only re-label as passive if the move was already near-optimal
+    // (i.e., not a real mistake/blunder) AND the outcome wasn't a big improvement.
+    // Don't call a move "passive" if it gained you >5% in practice.
+    if (guessNearOpt && actualNearOpt && decisionError < GREAT_EPS) {
+      if (equitySwing <= 0.05) {
+        category = "inaccuracy";
+        label = "Passive play";
+        icon = "?!";
+      }
+      // If equitySwing > 5%, it was still powerful in practice.
+      // Let the normal EV thresholds handle it (often "Good" or "Great").
+    }
+  }
+
+  // ---- 5. "Brilliant rescue" for huge swing from the player's POV ----
+  if (isPlayerMove && startWinProb <= 0.30 && endWinProb >= 0.70) {
+    category = "brilliant";
+    label = "Brilliant move";
+    icon = "‼";
+  }
+
+  // ---- 6. Narrative description based on equity swing ----
+  const startPct = (startWinProb * 100).toFixed(0);
+  const endPct = (endWinProb * 100).toFixed(0);
+  const diffSign = equitySwing >= 0 ? "+" : "";
+  const diffPct = (equitySwing * 100).toFixed(0);
+
+  let description = `Win prob: ${startPct}% → ${endPct}% (${diffSign}${diffPct}%)`;
+
+  // Special upgrade: Good move with big positive swing → Great move
+  if (category === "good" && equitySwing > 0.10 && decisionError < 0.03) {
+    category = "great";
+    label = "Great move";
+    icon = "★";
+  }
+
+  // Narrative adjustments based on category and swing
+  if (category === "blunder" && equitySwing < -0.10) {
+    description = `Lead squandered: ${startPct}% → ${endPct}%`;
+  } else if (category === "best" && equitySwing < -0.01) {
+    // Lowered threshold: any Best move with negative outcome shows variance
+    description = `Good decision, bad result: ${startPct}% → ${endPct}%`;
+  } else if (category === "best" && equitySwing > 0.10) {
+    description = `Huge improvement: ${startPct}% → ${endPct}%`;
+  } else if (startWinProb < 0.30 && endWinProb > 0.50) {
+    description = `Clutch comeback: ${startPct}% → ${endPct}%`;
+  }
+
+  // Bot-specific narration tweaks
+  if (!isPlayerMove) {
+    if (category === "blunder" && equitySwing > 0) {
+      description = `Engine blunder: your chances jumped ${diffSign}${diffPct}%`;
+    } else if (category === "best" && equitySwing < -0.01) {
+      // Bot's best move that hurt player
+      description = `Strong engine move: your chances dropped to ${endPct}%`;
+    } else if (category === "best" && equitySwing < 0) {
+      // Even tiny drops get acknowledged for bot moves
+      description = `Strong engine move: your chances dropped to ${endPct}%`;
+    }
+  }
+
+  return { category, label, icon, description };
 }
+
+// =======================
+// Animated Move Quality Badge (inline compact version)
+// =======================
+const QualityBadge = ({ quality, inline = false }) => {
+  if (!quality) return null;
+
+  if (inline) {
+    return (
+      <span className={`inline-quality quality-${quality.category}`}>
+        <span className="quality-icon-inline">{quality.icon}</span>
+        <span className="quality-label-inline">{quality.label}</span>
+      </span>
+    );
+  }
+
+  return (
+    <div className={`move-quality move-${quality.category}`}>
+      <div className="move-icon">{quality.icon}</div>
+      <div className="move-details">
+        <div className="move-label">{quality.label}</div>
+        {quality.description && (
+          <div className="move-description">{quality.description}</div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // =======================
 // Corrected Game Component
 // =======================
 const CorrectedGame = () => {
   const [gameStarted, setGameStarted] = useState(false);
-  const [playerSecret, setPlayerSecret] = useState(null);   // number you guess
-  const [computerSecret, setComputerSecret] = useState(null); // number bot guesses
+  const [playerSecret, setPlayerSecret] = useState(null);
+  const [computerSecret, setComputerSecret] = useState(null);
   const [playerPool, setPlayerPool] = useState([]);
   const [computerPool, setComputerPool] = useState([]);
   const [selectedNumbers, setSelectedNumbers] = useState([]);
   const [gameLog, setGameLog] = useState([]);
   const [winner, setWinner] = useState(null);
   const [playerTurn, setPlayerTurn] = useState(true);
-  const [winProb, setWinProb] = useState(null); // live P1 win chance
-  const [lastMoveQuality, setLastMoveQuality] = useState(null);
+  const [winProb, setWinProb] = useState(null);
+  const [lastPlayerQuality, setLastPlayerQuality] = useState(null);
+  const [lastComputerQuality, setLastComputerQuality] = useState(null);
+  const [thinking, setThinking] = useState(false);
+  
+  // Session win/loss tracking
+  const [sessionStats, setSessionStats] = useState({ wins: 0, losses: 0 });
 
   const startGame = () => {
     const computerHidden = Math.floor(Math.random() * 20) + 1;
@@ -925,8 +1047,9 @@ const CorrectedGame = () => {
     setComputerPool(fullPool);
     setSelectedNumbers([]);
     setGameLog([
-      "🎮 Game started! Each side chooses a secret number between 1 and 20.",
-      "🤖 Bot strategy: Optimal Death Valley DP (V(n,m) with guess vs question).",
+      { text: "🎮 Game started! Each side chooses a secret number between 1 and 20.", quality: null },
+      { text: "🤖 Bot strategy: Optimal Death Valley DP (soft-guess V(n,m)).", quality: null },
+      { text: "📊 Both players' moves are evaluated for quality!", quality: null },
     ]);
     setWinner(null);
     setGameStarted(true);
@@ -934,11 +1057,13 @@ const CorrectedGame = () => {
 
     const initialWin = getPlayerPerspectiveWinProb(20, 20, true);
     setWinProb(initialWin);
-    setLastMoveQuality(null);
+    setLastPlayerQuality(null);
+    setLastComputerQuality(null);
+    setThinking(false);
   };
 
   const handleNumberClick = (num) => {
-    if (!playerTurn || winner) return;
+    if (!playerTurn || winner || thinking) return;
     if (!playerPool.includes(num)) return;
 
     if (selectedNumbers.includes(num)) {
@@ -950,8 +1075,8 @@ const CorrectedGame = () => {
     }
   };
 
-  const makeRangeGuess = () => {
-    if (!playerTurn || winner || selectedNumbers.length === 0) return;
+  const makeRangeOrGuess = () => {
+    if (!playerTurn || winner || selectedNumbers.length === 0 || thinking) return;
 
     const nBefore = playerPool.length;
     const mBefore = computerPool.length;
@@ -961,151 +1086,200 @@ const CorrectedGame = () => {
     const max =
       selectedNumbers.length === 2 ? selectedNumbers[1] : selectedNumbers[0];
 
-    // Exact guess
+    // Exact GUESS
     if (min === max) {
       const guess = min;
-      const b = 1;
 
       if (guess === playerSecret) {
-        const branchWin = 1.0;
-        const quality = evaluatePlayerMoveQuality({
-          nBefore,
-          mBefore,
-          b,
-          preWin,
-          branchWin,
-        });
-        setLastMoveQuality(quality || null);
-
+        // Correct terminal guess: just mark as Best and end.
+        const quality = {
+          category: "best",
+          label: "Best move",
+          icon: "!!",
+          description: "Correct winning guess.",
+        };
+        setLastPlayerQuality(quality);
         setGameLog((prev) => [
           ...prev,
-          `👤 You asked: [${guess}, ${guess}]? Answer: YES — Correct! You win.`,
+          { text: `👤 You guessed [${guess}] — Correct! You win.`, quality },
         ]);
         setWinner("player");
+        setSessionStats((prev) => ({ ...prev, wins: prev.wins + 1 }));
         setWinProb(1.0);
         setSelectedNumbers([]);
         return;
       }
 
-      // Wrong exact guess: remove that candidate from your pool
+      // Wrong guess: remove that candidate, pass turn
       const newPlayerPool = playerPool.filter((x) => x !== guess);
+      const nAfter = newPlayerPool.length;
+      const mAfter = mBefore;
+      const postWin = getPlayerPerspectiveWinProb(nAfter, mAfter, false);
 
+      const quality = evaluateMoveQuality({
+        nBefore,
+        mBefore,
+        nAfter,
+        mAfter,
+        isPlayerMove: true,
+        isGuess: true,
+        b: null,
+        preWin,
+        postWin,
+      });
+
+      setLastPlayerQuality(quality || null);
       setGameLog((prev) => [
         ...prev,
-        `👤 You asked: [${guess}, ${guess}]? Answer: NO (${newPlayerPool.length} remaining)`,
+        {
+          text: `👤 You guessed [${guess}] — Wrong (${nAfter} remaining)`,
+          quality,
+        },
       ]);
 
       setPlayerPool(newPlayerPool);
-
-      const branchWin = getPlayerPerspectiveWinProb(
-        newPlayerPool.length,
-        computerPool.length,
-        false
-      );
-      setWinProb(branchWin);
-
-      const quality = evaluatePlayerMoveQuality({
-        nBefore,
-        mBefore,
-        b,
-        preWin,
-        branchWin,
-      });
-      setLastMoveQuality(quality || null);
-
       setSelectedNumbers([]);
       setPlayerTurn(false);
-      setTimeout(() => computerTurn(), 700);
+      setWinProb(postWin);
+
+      // Delay before computer moves - 2.5 seconds to read quality
+      setTimeout(() => {
+        setThinking(true);
+        setTimeout(() => computerTurn(), 1000);
+      }, 2500);
       return;
     }
 
-    // Range question
+    // RANGE QUESTION
     const inRange = min <= playerSecret && playerSecret <= max;
+    const affected = playerPool.filter((x) => x >= min && x <= max);
+    const b = affected.length;
 
     const newPlayerPool = inRange
-      ? playerPool.filter((x) => x >= min && x <= max)
+      ? affected
       : playerPool.filter((x) => x < min || x > max);
 
-    const b = newPlayerPool.length === 0
-      ? 0
-      : playerPool.filter((x) => x >= min && x <= max).length; // subset size in your pool
-
-    setPlayerPool(newPlayerPool);
-
-    const logMsg = `👤 You asked: [${min}, ${max}]? Answer: ${
-      inRange ? "YES" : "NO"
-    } (${newPlayerPool.length} remaining)`;
-    setGameLog((prev) => [...prev, logMsg]);
-
-    const branchWin = getPlayerPerspectiveWinProb(
-      newPlayerPool.length,
-      computerPool.length,
-      false
-    );
-    setWinProb(branchWin);
+    const nAfter = newPlayerPool.length;
+    const mAfter = mBefore;
+    const postWin = getPlayerPerspectiveWinProb(nAfter, mAfter, false);
 
     const quality =
       b > 0
-        ? evaluatePlayerMoveQuality({
+        ? evaluateMoveQuality({
             nBefore,
             mBefore,
+            nAfter,
+            mAfter,
+            isPlayerMove: true,
+            isGuess: false,
             b,
             preWin,
-            branchWin,
+            postWin,
           })
         : null;
-    setLastMoveQuality(quality || null);
 
+    setLastPlayerQuality(quality || null);
+    setGameLog((prev) => [
+      ...prev,
+      {
+        text: `👤 You asked: [${min}, ${max}]? Answer: ${
+          inRange ? "YES" : "NO"
+        } (${nAfter} remaining)`,
+        quality,
+      },
+    ]);
+
+    setPlayerPool(newPlayerPool);
     setSelectedNumbers([]);
     setPlayerTurn(false);
-    setTimeout(() => computerTurn(), 700);
+    setWinProb(postWin);
+
+    // Delay before computer moves - 2.5 seconds to read quality
+    setTimeout(() => {
+      setThinking(true);
+      setTimeout(() => computerTurn(), 1000);
+    }, 2500);
   };
 
   const computerTurn = () => {
-    if (winner) return;
+    if (winner) {
+      setThinking(false);
+      return;
+    }
 
     const n = computerPool.length;
     const m = playerPool.length;
 
-    if (n <= 0 || m <= 0) return;
+    if (n <= 0 || m <= 0) {
+      setThinking(false);
+      return;
+    }
+
+    const preWinPlayer = getPlayerPerspectiveWinProb(m, n, false);
 
     const action = getOptimalBotAction(n, m);
 
-    // Bot chooses to guess
+    // Bot GUESS
     if (action.type === "guess") {
-      const guessIndex = Math.floor(Math.random() * n);
-      const guess = computerPool[guessIndex];
+      const idx = Math.floor(Math.random() * n);
+      const guess = computerPool[idx];
 
       if (guess === computerSecret) {
+        const quality = {
+          category: "best",
+          label: "Best move",
+          icon: "!!",
+          description: "Engine found a winning guess.",
+        };
+        setLastComputerQuality(quality);
         setGameLog((prev) => [
           ...prev,
-          `🤖 Computer guesses ${guess} — Correct. Computer wins.`,
+          {
+            text: `🤖 Computer guesses ${guess} — Correct. Computer wins.`,
+            quality,
+          },
         ]);
         setWinner("computer");
+        setSessionStats((prev) => ({ ...prev, losses: prev.losses + 1 }));
         setWinProb(0.0);
+        setThinking(false);
         return;
       }
 
       const newComputerPool = computerPool.filter((x) => x !== guess);
-      setComputerPool(newComputerPool);
+      const nAfter = newComputerPool.length;
+      const mAfter = m;
+      const postWinPlayer = getPlayerPerspectiveWinProb(mAfter, nAfter, true);
 
+      const quality = evaluateMoveQuality({
+        nBefore: m,
+        mBefore: n,
+        nAfter: mAfter,
+        mAfter: nAfter,
+        isPlayerMove: false,
+        isGuess: true,
+        b: null,
+        preWin: preWinPlayer,
+        postWin: postWinPlayer,
+      });
+
+      setLastComputerQuality(quality || null);
       setGameLog((prev) => [
         ...prev,
-        `🤖 Computer guesses ${guess} — Wrong (${newComputerPool.length} remaining)`,
+        {
+          text: `🤖 Computer guesses ${guess} — Wrong (${nAfter} remaining)`,
+          quality,
+        },
       ]);
 
-      const newWin = getPlayerPerspectiveWinProb(
-        playerPool.length,
-        newComputerPool.length,
-        true
-      );
-      setWinProb(newWin);
-      setLastMoveQuality(null);
+      setComputerPool(newComputerPool);
       setPlayerTurn(true);
+      setWinProb(postWinPlayer);
+      setThinking(false);
       return;
     }
 
-    // Bot asks optimal question of size b
+    // Bot QUESTION
     const bidSize = action.b;
     const sorted = [...computerPool].sort((a, b) => a - b);
     const subset = sorted.slice(0, bidSize);
@@ -1118,21 +1292,38 @@ const CorrectedGame = () => {
       ? subset
       : computerPool.filter((x) => !subset.includes(x));
 
+    const nAfter = newComputerPool.length;
+    const mAfter = m;
+
+    const postWinPlayer = getPlayerPerspectiveWinProb(mAfter, nAfter, true);
+
+    const quality = evaluateMoveQuality({
+      nBefore: m,
+      mBefore: n,
+      nAfter: mAfter,
+      mAfter: nAfter,
+      isPlayerMove: false,
+      isGuess: false,
+      b: bidSize,
+      preWin: preWinPlayer,
+      postWin: postWinPlayer,
+    });
+
+    setLastComputerQuality(quality || null);
+    setGameLog((prev) => [
+      ...prev,
+      {
+        text: `🤖 Computer asks: [${minQ}, ${maxQ}]? Answer: ${
+          inSubset ? "YES" : "NO"
+        } (${nAfter} remaining)`,
+        quality,
+      },
+    ]);
+
     setComputerPool(newComputerPool);
-
-    const logMsg = `🤖 [ODV] asks: [${minQ}, ${maxQ}]? Answer: ${
-      inSubset ? "YES" : "NO"
-    } (${newComputerPool.length} remaining)`;
-    setGameLog((prev) => [...prev, logMsg]);
-
-    const newWin = getPlayerPerspectiveWinProb(
-      playerPool.length,
-      newComputerPool.length,
-      true
-    );
-    setWinProb(newWin);
-    setLastMoveQuality(null);
     setPlayerTurn(true);
+    setWinProb(postWinPlayer);
+    setThinking(false);
   };
 
   return (
@@ -1144,17 +1335,48 @@ const CorrectedGame = () => {
           </button>
 
           <div className="key-difference">
-            <h4>Key Rule Differences</h4>
+            <h4>Key Features</h4>
             <ul>
               <li>✅ Must make an exact guess to win</li>
               <li>✅ Death Valley (n=1 but not your turn) is preserved</li>
               <li>✅ Bot uses DP V(n,m) with guess vs question</li>
+              <li>✅ Move quality evaluation for BOTH players</li>
+              <li>✅ Live win probability updates</li>
+              <li>✅ Slower pacing to read move evaluations</li>
+              <li>✅ Session win/loss tracking</li>
               <li>❌ No auto-win just for reaching n=1</li>
             </ul>
           </div>
         </div>
       ) : (
         <div className="game-play">
+          {/* Session Stats Display */}
+          <div className="session-stats">
+            <h4>Session Record</h4>
+            <div className="stats-display">
+              <div className="stat-item player-wins">
+                <div className="stat-icon">👤</div>
+                <div className="stat-details">
+                  <div className="stat-value">{sessionStats.wins}</div>
+                  <div className="stat-label">Wins</div>
+                </div>
+              </div>
+              <div className="stat-divider">—</div>
+              <div className="stat-item computer-wins">
+                <div className="stat-icon">🤖</div>
+                <div className="stat-details">
+                  <div className="stat-value">{sessionStats.losses}</div>
+                  <div className="stat-label">Wins</div>
+                </div>
+              </div>
+            </div>
+            {(sessionStats.wins + sessionStats.losses > 0) && (
+              <div className="win-rate">
+                Win Rate: {((sessionStats.wins / (sessionStats.wins + sessionStats.losses)) * 100).toFixed(1)}%
+              </div>
+            )}
+          </div>
+
           <div className="game-state-display">
             <div className="player-status">
               <h4>Your Status</h4>
@@ -1177,20 +1399,24 @@ const CorrectedGame = () => {
 
               {winProb !== null && (
                 <div className="win-prob">
-                  Live win chance:{" "}
+                  <span className="prob-label">Your win chance:</span>
                   <span className="prob-number">
                     {(winProb * 100).toFixed(1)}%
                   </span>
+                  <div className="prob-bar">
+                    <div 
+                      className="prob-bar-fill" 
+                      style={{ 
+                        width: `${winProb * 100}%`,
+                        background: winProb > 0.6 ? '#22c55e' : winProb > 0.4 ? '#f59e0b' : '#ef4444'
+                      }}
+                    />
+                  </div>
                 </div>
               )}
 
-              {lastMoveQuality && (
-                <div
-                  className={`move-quality move-${lastMoveQuality.category}`}
-                >
-                  <span className="move-icon">{lastMoveQuality.icon}</span>
-                  <span className="move-label">{lastMoveQuality.label}</span>
-                </div>
+              {lastPlayerQuality && (
+                <QualityBadge quality={lastPlayerQuality} />
               )}
 
               {selectedNumbers.length > 0 && (
@@ -1216,10 +1442,32 @@ const CorrectedGame = () => {
               <div className="pool-count">
                 {computerPool.length} possibilities
               </div>
+              
+              {winProb !== null && (
+                <div className="win-prob computer-win-prob">
+                  <span className="prob-label">Computer win chance:</span>
+                  <span className="prob-number">
+                    {((1 - winProb) * 100).toFixed(1)}%
+                  </span>
+                  <div className="prob-bar">
+                    <div 
+                      className="prob-bar-fill" 
+                      style={{ 
+                        width: `${(1 - winProb) * 100}%`,
+                        background: (1 - winProb) > 0.6 ? '#ef4444' : (1 - winProb) > 0.4 ? '#f59e0b' : '#22c55e'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {lastComputerQuality && (
+                <QualityBadge quality={lastComputerQuality} />
+              )}
             </div>
           </div>
 
-          {!winner && playerTurn && (
+          {!winner && playerTurn && !thinking && (
             <div className="player-controls">
               <h4>Your Turn – Choose an Exact Guess or a Range</h4>
               <p className="instruction-text">
@@ -1227,7 +1475,7 @@ const CorrectedGame = () => {
                 guess, or two numbers to ask about a contiguous range.
               </p>
               <button
-                onClick={makeRangeGuess}
+                onClick={makeRangeOrGuess}
                 className="guess-btn"
                 disabled={selectedNumbers.length === 0}
                 style={{
@@ -1238,14 +1486,14 @@ const CorrectedGame = () => {
               >
                 {selectedNumbers.length === 0 && "Select numbers to make a move"}
                 {selectedNumbers.length === 1 &&
-                  `Ask: Is your number ${selectedNumbers[0]}?`}
+                  `Guess: Is your number ${selectedNumbers[0]}?`}
                 {selectedNumbers.length === 2 &&
                   `Ask: Is your number between ${selectedNumbers[0]} and ${selectedNumbers[1]}?`}
               </button>
             </div>
           )}
 
-          {!winner && !playerTurn && (
+          {!winner && (!playerTurn || thinking) && (
             <div className="waiting">
               <div className="spinner">⏳</div>
               <p>Computer is thinking...</p>
@@ -1266,7 +1514,10 @@ const CorrectedGame = () => {
             <div className="log-entries">
               {gameLog.map((entry, i) => (
                 <div key={i} className="log-entry">
-                  {entry}
+                  <span>{entry.text}</span>
+                  {entry.quality && (
+                    <QualityBadge quality={entry.quality} inline={true} />
+                  )}
                 </div>
               ))}
             </div>
@@ -1275,12 +1526,43 @@ const CorrectedGame = () => {
       )}
 
       <div className="code-download">
-        <h4>Notes</h4>
+        <h4>Technical Notes</h4>
         <p>
-          Live win% is computed from the full Death Valley DP V(n,m) and updates
-          after every move. Move-quality badges are evaluated purely from how
-          your real odds change on the actual branch, plus brilliant flags for
-          engine-defying and long-shot hits.
+          <strong>Soft-Guess Death Valley DP:</strong> Unlike the original "all-in" guess model, 
+          this engine uses soft-guess mechanics where a wrong guess removes one candidate and passes 
+          the turn (not instant loss). The DP computes V(n,m) = max(guessEV, askEV) where 
+          guessEV = (1/n)×1 + ((n-1)/n)×(1-V(m,n-1)). This prevents "best move → instant death" 
+          scenarios and makes guessing viable in tight endgames.
+        </p>
+        <p>
+          <strong>Pure EV-Based Evaluation:</strong> Move badges are determined by decision 
+          error (optimal EV - actual EV). Thresholds: &lt;0.5% = "Best", &lt;2% = "Great", 
+          &lt;5% = "Good", &lt;12% = "Mistake", &gt;12% = "Blunder". Good moves with huge 
+          positive swings (&gt;10% gain, &lt;3% EV loss) get upgraded to "Great" to reward 
+          high-impact hits.
+        </p>
+        <p>
+          <strong>Smart Passive Play Detection:</strong> "Passive play" only appears when: 
+          (1) you chose a question, (2) both guessing and your question are within 0.5% of optimal 
+          (true tie), AND (3) equity swing ≤5%. This prevents labeling big improvements as "passive" - 
+          a move that gains you 10% isn't passive, even if you rejected a viable guess!
+        </p>
+        <p>
+          <strong>Variance Acknowledgment:</strong> When a "Best move" produces any negative outcome 
+          (&gt;1% drop), the description changes to "Good decision, bad result" to acknowledge 
+          variance. Wrong guesses that are mathematically optimal now properly show they were correct 
+          decisions with unlucky outcomes.
+        </p>
+        <p>
+          <strong>Context-Aware Narratives:</strong> Descriptions adapt to situation: "Lead squandered" 
+          for blunders with big drops, "Huge improvement" for best moves with big gains, "Clutch comeback" 
+          for turning losing positions around, "Strong engine move" when bot plays well, "Engine blunder" 
+          when bot makes mistakes.
+        </p>
+        <p>
+          <strong>Session Tracking:</strong> Your wins and losses are tracked across multiple 
+          games in your current session. The counter persists when you click "Play Again" and 
+          resets only when you refresh the page.
         </p>
       </div>
     </div>
@@ -1430,8 +1712,104 @@ const Styles = () => (
 
     .key-difference { margin-top: 3rem; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto; padding: 2rem; background: #f8fafc; border-radius: 12px; }
 
+    .game-play { padding: 3rem 2rem; }
+    
+    .session-stats {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 2px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .session-stats h4 {
+      color: #1e293b;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+    .stats-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 0.75rem;
+    }
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      transition: all 0.3s;
+    }
+    .stat-item.player-wins {
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+      border: 2px solid #3b82f6;
+    }
+    .stat-item.computer-wins {
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      border: 2px solid #ef4444;
+    }
+    .stat-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .stat-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+    .stat-details {
+      text-align: left;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 0.25rem;
+      animation: statUpdate 0.6s ease;
+    }
+    @keyframes statUpdate {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .stat-item.player-wins .stat-value {
+      color: #1e40af;
+    }
+    .stat-item.computer-wins .stat-value {
+      color: #991b1b;
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.8;
+    }
+    .stat-item.player-wins .stat-label {
+      color: #1e40af;
+    }
+    .stat-item.computer-wins .stat-label {
+      color: #991b1b;
+    }
+    .stat-divider {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+    .win-rate {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #475569;
+      padding: 0.5rem 1rem;
+      background: #e0e7ff;
+      border-radius: 999px;
+      display: inline-block;
+    }
+    
     .game-state-display { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
-    .player-status, .computer-status { padding: 1.5rem; background: #f8fafc; border-radius: 12px; }
+    .player-status, .computer-status { padding: 1.5rem; background: #f8fafc; border-radius: 12px; position: relative; }
     .player-status h4, .computer-status h4 { color: #1e293b; margin-bottom: 1rem; }
 
     .pool-display, .pool-display-interactive { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; min-height: 80px; }
@@ -1444,148 +1822,308 @@ const Styles = () => (
     .pool-count { color: #64748b; font-size: 0.9rem; font-weight: 600; }
 
     .win-prob {
-      margin-top: 0.75rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.35rem 0.9rem;
-      border-radius: 999px;
-      background: #e0f2fe;
-      color: #0f172a;
-      font-size: 0.9rem;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+    }
+    .win-prob .prob-label {
+      display: block;
+      font-size: 0.85rem;
+      color: #334155;
+      margin-bottom: 0.25rem;
       font-weight: 600;
     }
     .win-prob .prob-number {
+      display: block;
       font-family: 'Courier New', monospace;
       font-weight: 700;
+      font-size: 1.5rem;
+      color: #0f172a;
+      margin-bottom: 0.5rem;
+    }
+    .prob-bar {
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .prob-bar-fill {
+      height: 100%;
+      transition: width 0.5s ease, background 0.5s ease;
+      border-radius: 999px;
     }
 
     .move-quality {
-      margin-top: 0.5rem;
-      display: inline-flex;
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 12px;
+      display: flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem 0.9rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 600;
+      gap: 0.75rem;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      animation: badgeEntrance 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     }
+    
+    @keyframes badgeEntrance {
+      0% {
+        transform: scale(0) rotate(-180deg);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.1) rotate(10deg);
+      }
+      100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    .move-quality:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
     .move-icon {
-      font-size: 0.9rem;
+      font-size: 1.5rem;
       font-weight: 800;
-      padding: 0.2rem 0.45rem;
-      border-radius: 999px;
-      display: inline-flex;
+      padding: 0.5rem;
+      border-radius: 50%;
+      display: flex;
       align-items: center;
       justify-content: center;
-      min-width: 1.4rem;
+      min-width: 3rem;
+      min-height: 3rem;
+      flex-shrink: 0;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s ease;
+    }
+    
+    .move-quality:hover .move-icon {
+      transform: rotate(360deg) scale(1.1);
     }
 
-    /* brilliant: purple circle, ??? */
+    .move-details {
+      flex: 1;
+    }
+    
+    .move-label {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .move-description {
+      font-size: 0.85rem;
+      opacity: 0.9;
+      line-height: 1.3;
+    }
+
+    /* Inline quality badges for game log */
+    .inline-quality {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+    .quality-icon-inline {
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+    .quality-label-inline {
+      font-size: 0.75rem;
+    }
+
+    /* brilliant: purple */
     .move-brilliant {
-      background: #f5f3ff;
-      color: #5b21b6;
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+      border-color: #a855f7;
     }
     .move-brilliant .move-icon {
-      background: #7c3aed;
+      background: linear-gradient(135deg, #a855f7, #7c3aed);
       color: #ffffff;
-      box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.6);
+    }
+    .move-brilliant .move-label {
+      color: #6b21a8;
+    }
+    .move-brilliant .move-description {
+      color: #7c3aed;
+    }
+    .quality-brilliant {
+      background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+      color: #6b21a8;
     }
 
-    /* best: light blue circle, !! */
+    /* best: blue */
     .move-best {
-      background: #eff6ff;
-      color: #1d4ed8;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-color: #3b82f6;
     }
     .move-best .move-icon {
-      background: #bfdbfe;
-      color: #1d4ed8;
-      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      color: #ffffff;
+    }
+    .move-best .move-label {
+      color: #1e40af;
+    }
+    .move-best .move-description {
+      color: #2563eb;
+    }
+    .quality-best {
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+      color: #1e40af;
     }
 
-    /* great: green star */
+    /* great: green */
     .move-great {
-      background: #ecfdf5;
-      color: #166534;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border-color: #22c55e;
     }
     .move-great .move-icon {
-      background: #bbf7d0;
-      color: #166534;
-      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5);
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: #ffffff;
+    }
+    .move-great .move-label {
+      color: #15803d;
+    }
+    .move-great .move-description {
+      color: #16a34a;
+    }
+    .quality-great {
+      background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+      color: #15803d;
     }
 
-    /* good: greyed green check */
+    /* good: light gray */
     .move-good {
-      background: #f1f5f9;
-      color: #14532d;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-color: #94a3b8;
     }
     .move-good .move-icon {
-      background: #e2f3e6;
-      color: #15803d;
-      box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.3);
+      background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+      color: #1e293b;
+    }
+    .move-good .move-label {
+      color: #334155;
+    }
+    .move-good .move-description {
+      color: #475569;
+    }
+    .quality-good {
+      background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+      color: #334155;
     }
 
-    /* inaccuracy: yellow ?! */
+    /* inaccuracy: yellow */
     .move-inaccuracy {
-      background: #fefce8;
-      color: #92400e;
+      background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+      border-color: #eab308;
     }
     .move-inaccuracy .move-icon {
-      background: #fde68a;
-      color: #92400e;
-      box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.6);
+      background: linear-gradient(135deg, #facc15, #eab308);
+      color: #713f12;
+    }
+    .move-inaccuracy .move-label {
+      color: #854d0e;
+    }
+    .move-inaccuracy .move-description {
+      color: #a16207;
+    }
+    .quality-inaccuracy {
+      background: linear-gradient(135deg, #fef9c3, #fef08a);
+      color: #854d0e;
     }
 
-    /* mistake: dark orange ? */
+    /* mistake: orange */
     .move-mistake {
-      background: #ffedd5;
-      color: #c2410c;
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      border-color: #f97316;
     }
     .move-mistake .move-icon {
-      background: #fed7aa;
-      color: #9a3412;
-      box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.6);
+      background: linear-gradient(135deg, #fb923c, #f97316);
+      color: #ffffff;
+    }
+    .move-mistake .move-label {
+      color: #c2410c;
+    }
+    .move-mistake .move-description {
+      color: #ea580c;
+    }
+    .quality-mistake {
+      background: linear-gradient(135deg, #ffedd5, #fed7aa);
+      color: #c2410c;
     }
 
-    /* blunder: red !!! */
+    /* blunder: red */
     .move-blunder {
-      background: #fee2e2;
-      color: #b91c1c;
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-color: #ef4444;
+      animation: blunderShake 0.5s ease;
     }
     .move-blunder .move-icon {
-      background: #fecaca;
-      color: #7f1d1d;
-      box-shadow: 0 0 0 1px rgba(185, 28, 28, 0.8);
+      background: linear-gradient(135deg, #f87171, #ef4444);
+      color: #ffffff;
+    }
+    .move-blunder .move-label {
+      color: #991b1b;
+    }
+    .move-blunder .move-description {
+      color: #dc2626;
+    }
+    .quality-blunder {
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      color: #991b1b;
+    }
+    
+    @keyframes blunderShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
     }
 
     .selection-display { margin-top: 1rem; padding: 0.75rem; background: #dbeafe; border-radius: 8px; color: #1e40af; font-weight: 600; text-align: center; }
 
-    .player-controls { background: #dbeafe; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; }
+    .player-controls { background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); padding: 2rem; border-radius: 12px; margin-bottom: 2rem; border: 2px solid #93c5fd; }
     .player-controls h4 { color: #1e40af; margin-bottom: 1rem; }
     .instruction-text { color: #1e40af; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.6; }
-    .guess-btn { width: 100%; padding: 1rem; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; }
-    .guess-btn:hover:not(:disabled) { background: #2563eb; transform: translateY(-2px); }
+    .guess-btn { width: 100%; padding: 1rem; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.3s; }
+    .guess-btn:hover:not(:disabled) { background: linear-gradient(135deg, #2563eb, #1e40af); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4); }
 
     .waiting { text-align: center; padding: 2rem; background: #f8fafc; border-radius: 12px; margin-bottom: 2rem; }
     .spinner { font-size: 2rem; animation: spin 2s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .waiting p { color: #64748b; margin-top: 1rem; }
 
-    .game-over { text-align: center; padding: 3rem 2rem; border-radius: 12px; margin-bottom: 2rem; }
-    .game-over.player { background: #dcfce7; border: 3px solid #22c55e; }
-    .game-over.computer { background: #fee2e2; border: 3px solid #ef4444; }
+    .game-over { text-align: center; padding: 3rem 2rem; border-radius: 12px; margin-bottom: 2rem; animation: gameOverSlide 0.5s ease; }
+    @keyframes gameOverSlide {
+      from { transform: translateY(-50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .game-over.player { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border: 3px solid #22c55e; }
+    .game-over.computer { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 3px solid #ef4444; }
     .game-over h3 { font-size: 2rem; margin-bottom: 1rem; }
     .game-over.player h3 { color: #166534; }
     .game-over.computer h3 { color: #991b1b; }
-    .play-again-btn { padding: 1rem 2rem; background: #1e293b; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; }
-    .play-again-btn:hover { background: #0f172a; transform: translateY(-2px); }
+    .play-again-btn { padding: 1rem 2rem; background: #1e293b; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.3s; }
+    .play-again-btn:hover { background: #0f172a; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
 
-    .game-log { background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; }
+    .game-log { background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 2px solid #e2e8f0; }
     .game-log h4 { color: #1e293b; margin-bottom: 1rem; }
-    .log-entries { max-height: 300px; overflow-y: auto; }
-    .log-entry { padding: 0.5rem; margin: 0.25rem 0; background: white; border-radius: 6px; font-size: 0.95rem; color: #334155; font-family: 'Courier New', monospace; }
+    .log-entries { max-height: 400px; overflow-y: auto; }
+    .log-entry { padding: 0.75rem; margin: 0.5rem 0; background: white; border-radius: 6px; font-size: 0.95rem; color: #334155; font-family: 'Courier New', monospace; display: flex; align-items: center; flex-wrap: wrap; border-left: 3px solid #e2e8f0; transition: all 0.2s; }
+    .log-entry:hover { border-left-color: #3b82f6; background: #f8fafc; }
 
-    .code-download { background: #f1f5f9; padding: 2rem; border-radius: 12px; text-align: center; }
+    .code-download { background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid #334155; }
+    .code-download h4 { color: #f1f5f9; margin-bottom: 1rem; }
+    .code-download p { color: #cbd5e1; margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.6; }
+    .code-download strong { color: #60a5fa; }
 
     .nica-response { background: #f8fafc; }
     .conversation { margin: 2rem 0; }
@@ -1610,7 +2148,8 @@ const Styles = () => (
       .game-state-display { grid-template-columns: 1fr; }
       .pool-display-interactive { justify-content: center; }
       .section { padding: 3rem 1.25rem; }
+      .stats-display { flex-direction: column; gap: 1rem; }
+      .stat-divider { transform: rotate(90deg); }
     }
   `}</style>
 );
-
