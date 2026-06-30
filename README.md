@@ -137,4 +137,5 @@ It showcases skills in:
 - Frontend architecture  
 - Deployment (Vercel)  
 - Interactive UI design  
-- Clear communication of logic & flow  
+- Clear communication of logic & flow
+- 
