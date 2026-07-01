@@ -26,6 +26,18 @@ export default function GuessWhoAnalysis() {
         style={{ width: `${scrollProgress}%` }}
       />
 
+      <nav className="topbar">
+        <div className="topbar-inner">
+          <div className="topbar-brand">Race-to-1 vs Guess Who</div>
+          <div className="topbar-links">
+            <a href="#example-game" className="topbar-link">Example</a>
+            <a href="#death-valley" className="topbar-link">Death Valley</a>
+            <a href="#corrected-game" className="topbar-link">Corrected Game</a>
+            <a href="#conclusion" className="topbar-link">Conclusion</a>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero */}
       <header className="hero">
         <div className="hero-content">
@@ -37,6 +49,18 @@ export default function GuessWhoAnalysis() {
             I uncovered the discrepancy, formalized it, and built a corrected
             model that reflects the real, turn-based game.
           </p>
+          <div className="hero-actions">
+            <a href="#corrected-game" className="cta-button">Try the corrected game</a>
+            <a href="#death-valley" className="secondary-link">See Death Valley</a>
+          </div>
+          <div className="intro-panel">
+            <p>Explore the gap between elegant mathematical modeling and the practical turn structure of Guess Who. This page highlights the viral strategy, Dr. Nica&apos;s model, the Race-to-1 issue, and an interactive corrected implementation.</p>
+            <div className="intro-features">
+              <div className="intro-feature">Preserves turn order and exact guesses</div>
+              <div className="intro-feature">Visualizes the Race-to-1 bug</div>
+              <div className="intro-feature">Evaluates move quality in real time</div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -212,7 +236,7 @@ export default function GuessWhoAnalysis() {
       </section>
 
       {/* Example playback showing Race-to-1 issue */}
-      <section className="section">
+      <section id="example-game" className="section">
         <div className="content">
           <h2>Example Game: Where the Race-to-1 Model Breaks</h2>
           <p>
@@ -239,7 +263,7 @@ export default function GuessWhoAnalysis() {
       </section>
 
       {/* Death Valley */}
-      <section className="section death-valley-section">
+      <section id="death-valley" className="section death-valley-section">
         <div className="content">
           <h2>Death Valley: Knowing But Not Winning</h2>
 
@@ -348,7 +372,7 @@ export default function GuessWhoAnalysis() {
       </section>
 
       {/* Conclusion */}
-      <section className="section conclusion">
+      <section id="conclusion" className="section conclusion">
         <div className="content">
           <h2>The Core Issue</h2>
 
@@ -373,7 +397,7 @@ export default function GuessWhoAnalysis() {
       </section>
 
       {/* Corrected implementation section */}
-      <section className="section corrected-game">
+      <section id="corrected-game" className="section corrected-game">
         <div className="content">
           <h2>Interactive: Corrected Game vs Optimal Death Valley Bot</h2>
 
@@ -1575,23 +1599,40 @@ const CorrectedGame = () => {
 const Styles = () => (
   <style>{`
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Georgia, serif; line-height: 1.7; color: #1a1a1a; background: #fafaf9; }
-    .analysis-container { min-height: 100vh; }
+    body { font-family: Georgia, serif; line-height: 1.7; color: #1a1a1a; background: #f8fafc; }
+    .analysis-container { min-height: 100vh; text-align: left; }
     .scroll-progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #7c3aed); z-index: 1000; transition: width 0.1s ease; }
 
-    .hero { min-height: 90vh; display: flex; align-items: center; justify-content: center; padding: 4rem 2rem; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; }
-    .hero-content { max-width: 900px; }
-    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; margin-bottom: 1rem; line-height: 1.2; }
-    .hero h2 { font-size: clamp(1.2rem, 3vw, 1.8rem); font-weight: 400; margin-bottom: 2rem; color: #cbd5e1; }
-    .subtitle { font-size: 1.1rem; color: #94a3b8; line-height: 1.8; }
+    .topbar { position: sticky; top: 3px; z-index: 999; background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .topbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1.5rem; }
+    .topbar-brand { color: #f8fafc; font-size: 1rem; font-weight: 700; letter-spacing: 0.06em; }
+    .topbar-links { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: flex-end; }
+    .topbar-link { color: #cbd5e1; text-decoration: none; font-size: 0.95rem; transition: color 0.2s; }
+    .topbar-link:hover { color: #ffffff; }
 
-    .section { padding: 5rem 2rem; }
+    .hero { min-height: 92vh; display: flex; align-items: center; justify-content: center; padding: 5rem 2rem 4rem; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; }
+    .hero-content { max-width: 900px; width: 100%; }
+    .hero h1 { font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 800; margin-bottom: 1rem; line-height: 1.05; letter-spacing: -0.03em; }
+    .hero h2 { font-size: clamp(1.25rem, 2.8vw, 1.8rem); font-weight: 400; margin-bottom: 1.75rem; color: #cbd5e1; max-width: 780px; }
+    .subtitle { font-size: 1.05rem; color: #cbd5e1; line-height: 1.85; max-width: 760px; margin-bottom: 2rem; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+    .cta-button, .secondary-link { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.95rem 1.6rem; border-radius: 999px; font-size: 0.95rem; font-weight: 700; text-decoration: none; }
+    .cta-button { background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; box-shadow: 0 18px 45px rgba(59, 130, 246, 0.24); }
+    .cta-button:hover { transform: translateY(-1px); }
+    .secondary-link { color: #cbd5e1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); }
+    .secondary-link:hover { background: rgba(255,255,255,0.12); }
+    .intro-panel { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 1.8rem; margin-top: 1.5rem; color: #e2e8f0; }
+    .intro-panel p { margin-bottom: 1.25rem; font-size: 1rem; color: #e2e8f0; }
+    .intro-features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .intro-feature { background: rgba(255,255,255,0.08); color: #ffffff; border: 1px solid rgba(255,255,255,0.14); border-radius: 16px; padding: 1rem 1rem; font-size: 0.95rem; }
+
+    .section { padding: 5rem 2rem; scroll-margin-top: 110px; }
     .section.alt { background: white; }
     .section.corrected-game { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
     .section.corrected-game h2 { color: white; }
     .section.corrected-game p { color: #e2e8f0; }
 
-    .content { max-width: 800px; margin: 0 auto; }
+    .content { max-width: 900px; margin: 0 auto; }
     .section h2 { font-size: 2.5rem; margin-bottom: 2rem; color: #0f172a; font-weight: 700; }
     .section p { margin-bottom: 1.5rem; font-size: 1.1rem; color: #334155; }
     .emphasis { font-style: italic; color: #1e40af; font-weight: 500; }
