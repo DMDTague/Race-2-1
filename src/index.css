@@ -1737,8 +1737,6 @@ body {
   from { box-shadow: 0 0 5px rgba(244, 63, 94, 0.4); transform: scale(1); }
   to { box-shadow: 0 0 25px rgba(244, 63, 94, 0.9); transform: scale(1.05); }
 }
-  to { box-shadow: 0 0 20px rgba(244, 63, 94, 0.9); }
-}
 
 .dv-explanation-text {
   font-size: 0.95rem;
