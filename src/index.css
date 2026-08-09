@@ -2071,7 +2071,94 @@ body {
   }
 }
 
-/* Move Review Modal & Accuracy Styles */
+/* Qualification Matrix Grid Styles */
+.qualification-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.qual-card {
+  background: var(--bg-surface-elevated, #0f172a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 12px);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.qual-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.5);
+}
+
+.qual-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.qual-header h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+  flex: 1;
+}
+
+.qual-icon {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.qual-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.qual-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.qual-brilliant { border-left: 4px solid #06b6d4; }
+.qual-brilliant .qual-icon { color: #06b6d4; }
+.qual-brilliant .qual-badge { color: #22d3ee; background: rgba(6, 182, 212, 0.15); }
+
+.qual-best { border-left: 4px solid #22c55e; }
+.qual-best .qual-icon { color: #22c55e; }
+.qual-best .qual-badge { color: #4ade80; background: rgba(34, 197, 94, 0.15); }
+
+.qual-great { border-left: 4px solid #3b82f6; }
+.qual-great .qual-icon { color: #3b82f6; }
+.qual-great .qual-badge { color: #60a5fa; background: rgba(59, 130, 246, 0.15); }
+
+.qual-good { border-left: 4px solid #10b981; }
+.qual-good .qual-icon { color: #10b981; }
+.qual-good .qual-badge { color: #34d399; background: rgba(16, 185, 129, 0.15); }
+
+.qual-inaccuracy { border-left: 4px solid #eab308; }
+.qual-inaccuracy .qual-icon { color: #eab308; }
+.qual-inaccuracy .qual-badge { color: #fde047; background: rgba(234, 179, 8, 0.15); }
+
+.qual-mistake { border-left: 4px solid #f97316; }
+.qual-mistake .qual-icon { color: #f97316; }
+.qual-mistake .qual-badge { color: #fb923c; background: rgba(249, 115, 22, 0.15); }
+
+.qual-blunder { border-left: 4px solid #ef4444; }
+.qual-blunder .qual-icon { color: #ef4444; }
+.qual-blunder .qual-badge { color: #f87171; background: rgba(239, 68, 68, 0.15); }
+
 .modal-backdrop {
   position: fixed;
   top: 0;

@@ -220,35 +220,104 @@ export default function GuessWhoAnalysis() {
           </div>
         </section>
 
-        {/* Section 6: Formal Math & DP Equations */}
-        <section id="formal-math" className="content-section alt-bg">
+        {/* Section 06b: Move Qualification Deep Dive */}
+        <section id="move-qualification" className="content-section">
           <div className="section-container">
-            <div className="section-label">06 / Formal Mathematics</div>
-            <h2 className="section-title">Optimal Death Valley Strategy V(n,m)</h2>
+            <div className="section-label">06b / Decision Evaluation</div>
+            <h2 className="section-title">Move Qualification Engine: From Brilliant to Blunder</h2>
 
             <p className="paragraph">
-              We define V(n,m) as the win probability for the player to move, given active pool n and opponent pool m, under turn-based soft-guess rules:
+              To evaluate human and AI decisions with mathematical precision, our engine measures the <strong>Expected Value (EV) Decision Error</strong> $\delta(a)$ of every candidate move $a$ relative to the optimal Bellman DP decision $V(n,m)$:
             </p>
 
-            {/* Formatted Math Cards */}
-            <div className="formula-cards-grid">
-              <div className="formula-card">
-                <h4>1. Soft-Guess Recurrence V(n,m)</h4>
-                <div className="latex-box">
-                  V(n,m) = max &#123; (1/n) + ((n-1)/n) &middot; (1 - V(m, n-1)), max<sub>1 &le; b &le; n-1</sub> [ (b/n)(1 - V(m,b)) + (1 - b/n)(1 - V(m, n-b)) ] &#125;
+            <div className="math-callout-box">
+              <h4>Decision Loss & Accuracy Equations</h4>
+              <div className="latex-box">
+                &delta;(a) = V(n,m) - EV(a; n,m) &ge; 0
+              </div>
+              <div className="latex-box" style={{ marginTop: '0.6rem' }}>
+                Accuracy(a) = 100 &middot; exp(-3 &middot; &delta;(a))
+              </div>
+              <p className="formula-caption">
+                Where &delta;(a) is the EV equity penalty of move a, mapping exact decision efficiency onto a 0%–100% accuracy scale.
+              </p>
+            </div>
+
+            <div className="qualification-matrix-grid">
+              <div className="qual-card qual-brilliant">
+                <div className="qual-header">
+                  <span className="qual-icon">‼</span>
+                  <h4>Brilliant Move</h4>
+                  <span className="qual-badge">&delta; &lt; 2% | Swing &ge; 30%</span>
                 </div>
-                <p className="formula-caption">
-                  Accounts for soft guesses (miss removes candidate leaving pool n-1) and optimal interval question bids b*.
+                <p>
+                  Played from a desperate position (&le;35% win chance) that capitalizes on maximum informational variance or an opponent misstep to swing win probability to &ge;65%, while maintaining near-optimal DP efficiency.
                 </p>
               </div>
 
-              <div className="formula-card">
-                <h4>2. Race-to-1 Recurrence V_race(n,m)</h4>
-                <div className="latex-box">
-                  V_race(n,m) = max<sub>1 &le; b &le; n-1</sub> [ (b/n)(1 - V_race(m,b)) + (1 - b/n)(1 - V_race(m, n-b)) ] with V_race(1,m) = 1.0
+              <div className="qual-card qual-best">
+                <div className="qual-header">
+                  <span className="qual-icon">!!</span>
+                  <h4>Best Move</h4>
+                  <span className="qual-badge">&delta; &lt; 0.5%</span>
                 </div>
-                <p className="formula-caption">
-                  Treats n = 1 as an instant absorbing win state.
+                <p>
+                  Exact game-theoretic optimal move $b^*$ or optimal soft guess dictate by $V(n,m)$. Retains 100% mathematical equity.
+                </p>
+              </div>
+
+              <div className="qual-card qual-great">
+                <div className="qual-header">
+                  <span className="qual-icon">★</span>
+                  <h4>Great Move</h4>
+                  <span className="qual-badge">0.5% &le; &delta; &lt; 2%</span>
+                </div>
+                <p>
+                  Near-optimal candidate question bid. Negligible EV loss relative to the absolute best move.
+                </p>
+              </div>
+
+              <div className="qual-card qual-good">
+                <div className="qual-header">
+                  <span className="qual-icon">✓</span>
+                  <h4>Good Move</h4>
+                  <span className="qual-badge">2% &le; &delta; &lt; 5%</span>
+                </div>
+                <p>
+                  Standard logical move (such as naive binary half-split $\lfloor n/2 \rfloor$) that misses minor DP asymmetric edges.
+                </p>
+              </div>
+
+              <div className="qual-card qual-inaccuracy">
+                <div className="qual-header">
+                  <span className="qual-icon">⚠️</span>
+                  <h4>Inaccuracy</h4>
+                  <span className="qual-badge">5% &le; &delta; &lt; 10%</span>
+                </div>
+                <p>
+                  Suboptimal candidate question bid size that yields uneven YES/NO candidate distributions.
+                </p>
+              </div>
+
+              <div className="qual-card qual-mistake">
+                <div className="qual-header">
+                  <span className="qual-icon">?</span>
+                  <h4>Mistake</h4>
+                  <span className="qual-badge">10% &le; &delta; &lt; 20%</span>
+                </div>
+                <p>
+                  Flawed decision, such as an ill-timed Soft Guess when pool $n$ is still large.
+                </p>
+              </div>
+
+              <div className="qual-card qual-blunder">
+                <div className="qual-header">
+                  <span className="qual-icon">??</span>
+                  <h4>Blunder</h4>
+                  <span className="qual-badge">&delta; &ge; 20%</span>
+                </div>
+                <p>
+                  Major game-changing blunder. Includes failed Hard Guesses, asking questions of size $b=0$ or $b=n$, or giving away Death Valley advantages.
                 </p>
               </div>
             </div>
