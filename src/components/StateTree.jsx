@@ -1,6 +1,6 @@
 // src/components/StateTree.jsx
 import React from 'react';
-import { ArrowDown, Check, X, ShieldAlert } from 'lucide-react';
+import { ArrowDown } from 'lucide-react';
 
 export default function StateTree() {
   return (

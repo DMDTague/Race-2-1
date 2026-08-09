@@ -1,6 +1,6 @@
 // src/components/DeathValleyViz.jsx
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
 
 export default function DeathValleyViz() {
   const [phase, setPhase] = useState(0);

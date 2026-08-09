@@ -1,7 +1,7 @@
 // src/components/DpHeatmapExplorer.jsx
 import React, { useState } from 'react';
 import { getDpMatrix, getEvBreakdown, getWinValue } from '../utils/mathEngine';
-import { Info, Sparkles, Sliders, ChevronDown } from 'lucide-react';
+import { Info, Sparkles } from 'lucide-react';
 
 export default function DpHeatmapExplorer() {
   const [selectedModel, setSelectedModel] = useState('soft'); // 'soft' | 'hard' | 'race'
@@ -36,7 +36,7 @@ export default function DpHeatmapExplorer() {
           <div>
             <h3>Interactive DP Matrix & Win Probability Explorer</h3>
             <p className="dp-subtitle">
-              Explore $V(n,m)$ and optimal move choices $b^*(n,m)$ across $20 \times 20 = 400$ game states.
+              Explore V(n,m) and optimal move choices b*(n,m) across 20 &times; 20 = 400 game states.
             </p>
           </div>
         </div>

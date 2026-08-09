@@ -9,18 +9,13 @@ import {
 import { sound } from '../utils/audio';
 import {
   RotateCcw,
-  Zap,
-  Award,
   HelpCircle,
   Volume2,
   VolumeX,
   Bot,
   User,
   Sparkles,
-  TrendingUp,
-  AlertTriangle,
   Play,
-  Pause,
 } from 'lucide-react';
 
 const CHARACTERS = [
@@ -480,7 +475,7 @@ export default function CorrectedGame() {
           <div className="start-badge">Interactive Simulation</div>
           <h3>Play Corrected Guess Who vs. Strategy Engine</h3>
           <p>
-            Experience true turn-based mechanics where candidate pool $n=1$ places you in <strong>Death Valley</strong>.
+            Experience true turn-based mechanics where candidate pool n=1 places you in <strong>Death Valley</strong>.
             Every move is evaluated for mathematical equity precision.
           </p>
 
