@@ -8,9 +8,13 @@ class SoundManager {
 
   init() {
     if (!this.ctx && typeof window !== 'undefined') {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+        }
+      } catch {
+        this.ctx = null;
       }
     }
   }
@@ -21,7 +25,7 @@ class SoundManager {
       this.init();
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') {
-        this.ctx.resume();
+        this.ctx.resume().catch(() => {});
       }
 
       const osc = this.ctx.createOscillator();

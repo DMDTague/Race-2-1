@@ -6,6 +6,7 @@ import CorrectedGame from './components/CorrectedGame';
 import GamePlayback from './components/GamePlayback';
 import DeathValleyViz from './components/DeathValleyViz';
 import StateTree from './components/StateTree';
+import ErrorBoundary from './components/ErrorBoundary';
 import {
   ExternalLink,
   ChevronRight,
@@ -17,7 +18,9 @@ import {
 export default function GuessWhoAnalysis() {
   return (
     <div className="analysis-app-root">
-      <Navbar />
+      <ErrorBoundary>
+        <Navbar />
+      </ErrorBoundary>
 
       {/* Hero Section */}
       <header className="hero-header">
@@ -188,7 +191,9 @@ export default function GuessWhoAnalysis() {
               Use the interactive player below to step through the sequence of moves where Dr. Nica&apos;s simulator prematurely terminates the game:
             </p>
 
-            <GamePlayback />
+            <ErrorBoundary>
+              <GamePlayback />
+            </ErrorBoundary>
           </div>
         </section>
 
@@ -202,7 +207,9 @@ export default function GuessWhoAnalysis() {
               I term this critical state <strong>Death Valley</strong>: the state where you logically deduce the opponent&apos;s secret candidate (n = 1), but must pass your turn and survive the opponent&apos;s final attempt.
             </p>
 
-            <DeathValleyViz />
+            <ErrorBoundary>
+              <DeathValleyViz />
+            </ErrorBoundary>
 
             <div className="formal-definition-card">
               <h3>Definition: Death Valley State</h3>
@@ -254,7 +261,9 @@ export default function GuessWhoAnalysis() {
             <div className="section-label">07 / Structure Comparison</div>
             <h2 className="section-title">Turn Structure: Race-to-1 vs. Real Guess Who</h2>
 
-            <StateTree />
+            <ErrorBoundary>
+              <StateTree />
+            </ErrorBoundary>
           </div>
         </section>
 
@@ -264,7 +273,9 @@ export default function GuessWhoAnalysis() {
             <div className="section-label">08 / Interactive DP Matrix</div>
             <h2 className="section-title">2D DP Heatmap & Expected Value Inspector</h2>
 
-            <DpHeatmapExplorer />
+            <ErrorBoundary>
+              <DpHeatmapExplorer />
+            </ErrorBoundary>
           </div>
         </section>
 
@@ -278,7 +289,9 @@ export default function GuessWhoAnalysis() {
               Play Guess Who using candidate numbers or character cards against the optimal Death Valley DP Engine. Watch real-time move evaluations (&quot;!! Best&quot;, &quot;★ Great&quot;, &quot;✓ Good&quot;, &quot;?? Blunder&quot;) as you play!
             </p>
 
-            <CorrectedGame />
+            <ErrorBoundary>
+              <CorrectedGame />
+            </ErrorBoundary>
           </div>
         </section>
 
