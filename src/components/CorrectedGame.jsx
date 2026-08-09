@@ -5,8 +5,10 @@ import {
   getOptimalBotAction,
   evaluateMoveQuality,
   getEvBreakdown,
+  calculateGameAccuracy,
 } from '../utils/mathEngine';
 import { sound } from '../utils/audio';
+import MoveReviewModal from './MoveReviewModal';
 import {
   RotateCcw,
   HelpCircle,
@@ -16,6 +18,8 @@ import {
   User,
   Sparkles,
   Play,
+  BarChart2,
+  Award,
 } from 'lucide-react';
 
 const CHARACTERS = [
@@ -86,6 +90,11 @@ export default function CorrectedGame() {
   const [thinking, setThinking] = useState(false);
   const [showHint, setShowHint] = useState(false);
 
+  // Structured Move Review & Timeline State
+  const [moveHistory, setMoveHistory] = useState([]);
+  const [winOddsTimeline, setWinOddsTimeline] = useState([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
   // Session Stats
   const [sessionStats, setSessionStats] = useState({
     wins: 0,
@@ -113,7 +122,7 @@ export default function CorrectedGame() {
     setComputerPool(fullPool);
     setSelectedNumbers([]);
     setGameLog([
-      { text: `🎮 Game initialized! Mode: ${gameModel.toUpperCase()} | Bot: ${botMode.toUpperCase()}`, quality: null },
+      { text: `🎮 Game initialized! Ruleset: ${gameModel.toUpperCase()} | Bot: ${botMode.toUpperCase()}`, quality: null },
       { text: "📊 Evaluate your moves against optimal DP decisions in real time.", quality: null },
     ]);
     setWinner(null);
@@ -126,6 +135,17 @@ export default function CorrectedGame() {
     setLastComputerQuality(null);
     setThinking(false);
     setShowHint(false);
+
+    setMoveHistory([]);
+    setWinOddsTimeline([
+      {
+        step: 0,
+        moveName: 'Initial Setup',
+        playerWinProb: initialWin,
+        computerWinProb: 1 - initialWin,
+        actor: 'setup',
+      },
+    ]);
   };
 
   const handleCardClick = (num) => {
@@ -174,6 +194,7 @@ export default function CorrectedGame() {
     const nBefore = playerPool.length;
     const mBefore = computerPool.length;
     const preWin = getPlayerPerspectiveWinProb(nBefore, mBefore, true, gameModel);
+    const evBreakdown = getEvBreakdown(nBefore, mBefore, gameModel);
 
     const min = selectedNumbers[0];
     const max = selectedNumbers.length === 2 ? selectedNumbers[1] : selectedNumbers[0];
@@ -190,12 +211,45 @@ export default function CorrectedGame() {
           label: 'Best move',
           icon: '!!',
           description: 'Correct winning guess!',
+          decisionError: 0,
+          optimalEV: 1.0,
+          actualEV: 1.0,
         };
         setLastPlayerQuality(quality);
         setGameLog((prev) => [
           ...prev,
           { text: `👤 You guessed [${guess}: ${charName}] — Correct! You win the game!`, quality },
         ]);
+
+        const recordMove = {
+          moveIndex: moveHistory.length + 1,
+          actor: 'player',
+          actionType: 'guess',
+          guessId: guess,
+          guessName: charName,
+          actionText: `Guessed #${guess} (${charName})`,
+          nBefore,
+          mBefore,
+          nAfter: 1,
+          mAfter: mBefore,
+          answer: 'CORRECT',
+          outcomeText: 'Game Won!',
+          preWin,
+          postWin: 1.0,
+          equitySwing: 1.0 - preWin,
+          quality,
+          decisionError: 0,
+          optimalEV: 1.0,
+          optimalActionText: 'Exact Winning Guess',
+          evBreakdown,
+        };
+
+        setMoveHistory((prev) => [...prev, recordMove]);
+        setWinOddsTimeline((prev) => [
+          ...prev,
+          { step: prev.length, moveName: 'Player Win', playerWinProb: 1.0, computerWinProb: 0.0, actor: 'player' },
+        ]);
+
         setWinner('player');
         setSessionStats((prev) => ({
           ...prev,
@@ -211,10 +265,50 @@ export default function CorrectedGame() {
       let newPlayerPool = playerPool.filter((x) => x !== guess);
       if (gameModel === 'hard') {
         sound.playLoss();
+        const blunderQuality = {
+          category: 'blunder',
+          label: 'Blunder',
+          icon: '??',
+          description: 'Hard guess failed.',
+          decisionError: preWin,
+          optimalEV: preWin,
+          actualEV: 0,
+        };
+
         setGameLog((prev) => [
           ...prev,
-          { text: `👤 Hard Guess [${guess}: ${charName}] was WRONG! Instant Game Over.`, quality: { category: 'blunder', label: 'Blunder', icon: '??', description: 'Hard guess failed.' } },
+          { text: `👤 Hard Guess [${guess}: ${charName}] was WRONG! Instant Game Over.`, quality: blunderQuality },
         ]);
+
+        const recordMove = {
+          moveIndex: moveHistory.length + 1,
+          actor: 'player',
+          actionType: 'guess',
+          guessId: guess,
+          guessName: charName,
+          actionText: `Hard Guess #${guess} (${charName})`,
+          nBefore,
+          mBefore,
+          nAfter: 0,
+          mAfter: mBefore,
+          answer: 'WRONG',
+          outcomeText: 'Instant Game Loss',
+          preWin,
+          postWin: 0.0,
+          equitySwing: -preWin,
+          quality: blunderQuality,
+          decisionError: preWin,
+          optimalEV: preWin,
+          optimalActionText: 'Safe Bid Question',
+          evBreakdown,
+        };
+
+        setMoveHistory((prev) => [...prev, recordMove]);
+        setWinOddsTimeline((prev) => [
+          ...prev,
+          { step: prev.length, moveName: 'Player Loss', playerWinProb: 0.0, computerWinProb: 1.0, actor: 'player' },
+        ]);
+
         setWinner('computer');
         setSessionStats((prev) => ({ ...prev, losses: prev.losses + 1, blunders: prev.blunders + 1 }));
         setWinProb(0.0);
@@ -228,8 +322,6 @@ export default function CorrectedGame() {
       const quality = evaluateMoveQuality({
         nBefore,
         mBefore,
-        nAfter,
-        mAfter,
         isPlayerMove: true,
         isGuess: true,
         b: null,
@@ -240,6 +332,35 @@ export default function CorrectedGame() {
 
       if (quality?.category === 'best') setSessionStats((prev) => ({ ...prev, bestMoves: prev.bestMoves + 1 }));
       if (quality?.category === 'blunder') setSessionStats((prev) => ({ ...prev, blunders: prev.blunders + 1 }));
+
+      const recordMove = {
+        moveIndex: moveHistory.length + 1,
+        actor: 'player',
+        actionType: 'guess',
+        guessId: guess,
+        guessName: charName,
+        actionText: `Guessed #${guess} (${charName})`,
+        nBefore,
+        mBefore,
+        nAfter,
+        mAfter,
+        answer: 'WRONG',
+        outcomeText: `WRONG (${nAfter} candidates remain)`,
+        preWin,
+        postWin,
+        equitySwing: postWin - preWin,
+        quality,
+        decisionError: quality.decisionError,
+        optimalEV: quality.optimalEV,
+        optimalActionText: evBreakdown[0]?.label || 'Ask b*',
+        evBreakdown,
+      };
+
+      setMoveHistory((prev) => [...prev, recordMove]);
+      setWinOddsTimeline((prev) => [
+        ...prev,
+        { step: prev.length, moveName: 'Player Guess (Wrong)', playerWinProb: postWin, computerWinProb: 1 - postWin, actor: 'player' },
+      ]);
 
       setLastPlayerQuality(quality || null);
       setGameLog((prev) => [
@@ -254,7 +375,7 @@ export default function CorrectedGame() {
 
       setTimeout(() => {
         setThinking(true);
-        setTimeout(() => triggerComputerTurn(newPlayerPool, computerPool), 1200);
+        setTimeout(() => triggerComputerTurn(newPlayerPool, computerPool, [...moveHistory, recordMove], [...winOddsTimeline, { step: winOddsTimeline.length, moveName: 'Player Guess', playerWinProb: postWin, computerWinProb: 1 - postWin, actor: 'player' }]), 1200);
       }, 1500);
       return;
     }
@@ -275,8 +396,6 @@ export default function CorrectedGame() {
     const quality = evaluateMoveQuality({
       nBefore,
       mBefore,
-      nAfter,
-      mAfter,
       isPlayerMove: true,
       isGuess: false,
       b,
@@ -287,6 +406,35 @@ export default function CorrectedGame() {
 
     if (quality?.category === 'best') setSessionStats((prev) => ({ ...prev, bestMoves: prev.bestMoves + 1 }));
     if (quality?.category === 'blunder') setSessionStats((prev) => ({ ...prev, blunders: prev.blunders + 1 }));
+
+    const recordMove = {
+      moveIndex: moveHistory.length + 1,
+      actor: 'player',
+      actionType: 'question',
+      selectedRange: [min, max],
+      b,
+      actionText: `Asked range [${min} .. ${max}] (b=${b})`,
+      nBefore,
+      mBefore,
+      nAfter,
+      mAfter,
+      answer: inRange ? 'YES ✅' : 'NO ❌',
+      outcomeText: `${inRange ? 'YES' : 'NO'} (${nAfter} candidates remain)`,
+      preWin,
+      postWin,
+      equitySwing: postWin - preWin,
+      quality,
+      decisionError: quality.decisionError,
+      optimalEV: quality.optimalEV,
+      optimalActionText: evBreakdown[0]?.label || 'Ask b*',
+      evBreakdown,
+    };
+
+    setMoveHistory((prev) => [...prev, recordMove]);
+    setWinOddsTimeline((prev) => [
+      ...prev,
+      { step: prev.length, moveName: `Asked [${min}..${max}]`, playerWinProb: postWin, computerWinProb: 1 - postWin, actor: 'player' },
+    ]);
 
     setLastPlayerQuality(quality || null);
     setGameLog((prev) => [
@@ -302,13 +450,16 @@ export default function CorrectedGame() {
     setPlayerTurn(false);
     setWinProb(postWin);
 
+    const currentHistory = [...moveHistory, recordMove];
+    const currentTimeline = [...winOddsTimeline, { step: winOddsTimeline.length, moveName: `Asked [${min}..${max}]`, playerWinProb: postWin, computerWinProb: 1 - postWin, actor: 'player' }];
+
     setTimeout(() => {
       setThinking(true);
-      setTimeout(() => triggerComputerTurn(newPlayerPool, computerPool), 1200);
+      setTimeout(() => triggerComputerTurn(newPlayerPool, computerPool, currentHistory, currentTimeline), 1200);
     }, 1500);
   };
 
-  const triggerComputerTurn = (currPlayerPool, currComputerPool) => {
+  const triggerComputerTurn = (currPlayerPool, currComputerPool, hist = moveHistory, timeline = winOddsTimeline) => {
     if (winner) {
       setThinking(false);
       return;
@@ -323,6 +474,7 @@ export default function CorrectedGame() {
     }
 
     const preWinPlayer = getPlayerPerspectiveWinProb(m, n, false, gameModel);
+    const evBreakdownComp = getEvBreakdown(n, m, gameModel);
 
     let action;
     if (botMode === 'optimal') {
@@ -351,7 +503,37 @@ export default function CorrectedGame() {
           label: 'Best move',
           icon: '!!',
           description: 'Engine declared the correct winning guess.',
+          decisionError: 0,
+          optimalEV: 1.0,
+          actualEV: 1.0,
         };
+
+        const recordMove = {
+          moveIndex: hist.length + 1,
+          actor: 'computer',
+          actionType: 'guess',
+          guessId: guess,
+          guessName: charName,
+          actionText: `Bot Guessed #${guess} (${charName})`,
+          nBefore: n,
+          mBefore: m,
+          nAfter: 1,
+          mAfter: m,
+          answer: 'CORRECT',
+          outcomeText: 'Computer Won Game',
+          preWin: preWinPlayer,
+          postWin: 0.0,
+          equitySwing: -preWinPlayer,
+          quality,
+          decisionError: 0,
+          optimalEV: 1.0,
+          optimalActionText: 'Exact Winning Guess',
+          evBreakdown: evBreakdownComp,
+        };
+
+        setMoveHistory([...hist, recordMove]);
+        setWinOddsTimeline([...timeline, { step: timeline.length, moveName: 'Bot Win', playerWinProb: 0.0, computerWinProb: 1.0, actor: 'computer' }]);
+
         setLastComputerQuality(quality);
         setGameLog((prev) => [
           ...prev,
@@ -372,8 +554,6 @@ export default function CorrectedGame() {
       const quality = evaluateMoveQuality({
         nBefore: m,
         mBefore: n,
-        nAfter: mAfter,
-        mAfter: nAfter,
         isPlayerMove: false,
         isGuess: true,
         b: null,
@@ -381,6 +561,32 @@ export default function CorrectedGame() {
         postWin: postWinPlayer,
         model: gameModel,
       });
+
+      const recordMove = {
+        moveIndex: hist.length + 1,
+        actor: 'computer',
+        actionType: 'guess',
+        guessId: guess,
+        guessName: charName,
+        actionText: `Bot Guessed #${guess} (${charName})`,
+        nBefore: n,
+        mBefore: m,
+        nAfter,
+        mAfter,
+        answer: 'WRONG',
+        outcomeText: `WRONG (${nAfter} remaining)`,
+        preWin: preWinPlayer,
+        postWin: postWinPlayer,
+        equitySwing: postWinPlayer - preWinPlayer,
+        quality,
+        decisionError: quality.decisionError,
+        optimalEV: quality.optimalEV,
+        optimalActionText: evBreakdownComp[0]?.label || 'Ask b*',
+        evBreakdown: evBreakdownComp,
+      };
+
+      setMoveHistory([...hist, recordMove]);
+      setWinOddsTimeline([...timeline, { step: timeline.length, moveName: 'Bot Guess (Wrong)', playerWinProb: postWinPlayer, computerWinProb: 1 - postWinPlayer, actor: 'computer' }]);
 
       setLastComputerQuality(quality || null);
       setGameLog((prev) => [
@@ -414,8 +620,6 @@ export default function CorrectedGame() {
     const quality = evaluateMoveQuality({
       nBefore: m,
       mBefore: n,
-      nAfter: mAfter,
-      mAfter: nAfter,
       isPlayerMove: false,
       isGuess: false,
       b: bidSize,
@@ -423,6 +627,32 @@ export default function CorrectedGame() {
       postWin: postWinPlayer,
       model: gameModel,
     });
+
+    const recordMove = {
+      moveIndex: hist.length + 1,
+      actor: 'computer',
+      actionType: 'question',
+      b: bidSize,
+      selectedRange: [minQ, maxQ],
+      actionText: `Bot asked range [${minQ} .. ${maxQ}] (b=${bidSize})`,
+      nBefore: n,
+      mBefore: m,
+      nAfter,
+      mAfter,
+      answer: inSubset ? 'YES ✅' : 'NO ❌',
+      outcomeText: `${inSubset ? 'YES' : 'NO'} (${nAfter} remaining)`,
+      preWin: preWinPlayer,
+      postWin: postWinPlayer,
+      equitySwing: postWinPlayer - preWinPlayer,
+      quality,
+      decisionError: quality.decisionError,
+      optimalEV: quality.optimalEV,
+      optimalActionText: evBreakdownComp[0]?.label || 'Ask b*',
+      evBreakdown: evBreakdownComp,
+    };
+
+    setMoveHistory([...hist, recordMove]);
+    setWinOddsTimeline([...timeline, { step: timeline.length, moveName: `Bot Asked [${minQ}..${maxQ}]`, playerWinProb: postWinPlayer, computerWinProb: 1 - postWinPlayer, actor: 'computer' }]);
 
     setLastComputerQuality(quality || null);
     setGameLog((prev) => [
@@ -442,6 +672,8 @@ export default function CorrectedGame() {
   const hintEvBreakdown = gameStarted && playerTurn && playerPool.length > 1
     ? getEvBreakdown(playerPool.length, computerPool.length, gameModel)
     : [];
+
+  const playerAccuracy = calculateGameAccuracy(moveHistory, 'player');
 
   return (
     <div className="corrected-game-wrapper">
@@ -472,11 +704,11 @@ export default function CorrectedGame() {
 
       {!gameStarted ? (
         <div className="game-start-hero">
-          <div className="start-badge">Interactive Simulation</div>
+          <div className="start-badge">Interactive Simulation & Move Review</div>
           <h3>Play Corrected Guess Who vs. Strategy Engine</h3>
           <p>
             Experience true turn-based mechanics where candidate pool n=1 places you in <strong>Death Valley</strong>.
-            Every move is evaluated for mathematical equity precision.
+            Every move is evaluated for mathematical equity precision with full post-game <strong>Move Accuracy Review</strong>.
           </p>
 
           <button onClick={startGame} className="start-game-btn">
@@ -485,7 +717,7 @@ export default function CorrectedGame() {
         </div>
       ) : (
         <div className="game-active-layout">
-          {/* Header Stats */}
+          {/* Header Stats Bar */}
           <div className="game-stats-header">
             <div className="session-card">
               <span className="card-label">Session Record</span>
@@ -493,12 +725,27 @@ export default function CorrectedGame() {
                 {sessionStats.wins}W - {sessionStats.losses}L
               </span>
             </div>
+
+            <div className="session-card">
+              <span className="card-label">Your Match Accuracy</span>
+              <span className="card-value highlight-acc">
+                {moveHistory.length > 0 ? `${playerAccuracy}%` : '100%'}
+              </span>
+            </div>
+
             <div className="session-card">
               <span className="card-label">Best Move Ratio</span>
               <span className="card-value">
                 {sessionStats.bestMoves} Best / {sessionStats.blunders} Blunders
               </span>
             </div>
+
+            {moveHistory.length > 0 && (
+              <button onClick={() => setShowReviewModal(true)} className="review-trigger-btn">
+                <BarChart2 size={16} /> Review Move Accuracy
+              </button>
+            )}
+
             <button onClick={startGame} className="restart-btn">
               <RotateCcw size={16} /> Reset Board
             </button>
@@ -660,15 +907,28 @@ export default function CorrectedGame() {
           {winner && (
             <div className={`winner-banner ${winner}`}>
               <h3>{winner === 'player' ? '🎉 Victory! You Won!' : '💻 Defeat! Computer Won!'}</h3>
-              <button onClick={startGame} className="play-again-btn">
-                Play Next Game
-              </button>
+              <div className="banner-btn-row">
+                <button onClick={() => setShowReviewModal(true)} className="review-game-btn">
+                  <Award size={18} /> Open Full Move Review & Graph
+                </button>
+                <button onClick={startGame} className="play-again-btn">
+                  Play Next Game
+                </button>
+              </div>
             </div>
           )}
 
           {/* Game Log */}
           <div className="game-log-panel">
-            <h4>Live Game & Decision Log</h4>
+            <div className="panel-title-row">
+              <h4>Live Decision Log</h4>
+              {moveHistory.length > 0 && (
+                <button onClick={() => setShowReviewModal(true)} className="small-review-link">
+                  Detailed Move Review ({moveHistory.length} moves)
+                </button>
+              )}
+            </div>
+
             <div className="log-list">
               {gameLog.map((entry, idx) => (
                 <div key={idx} className="log-row">
@@ -680,6 +940,18 @@ export default function CorrectedGame() {
           </div>
         </div>
       )}
+
+      {/* Move Review Modal Component */}
+      <MoveReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        moveHistory={moveHistory}
+        winOddsTimeline={winOddsTimeline}
+        gameModel={gameModel}
+        winner={winner}
+        characters={CHARACTERS}
+      />
     </div>
   );
 }
+

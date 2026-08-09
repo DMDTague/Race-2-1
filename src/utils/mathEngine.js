@@ -255,6 +255,9 @@ export function getPlayerPerspectiveWinProb(nPlayer, nComputer, isPlayerTurn, mo
 /**
  * Evaluate move decision quality & equity swing
  */
+/**
+ * Evaluate move decision quality & equity swing
+ */
 export function evaluateMoveQuality({
   nBefore,
   mBefore,
@@ -297,11 +300,12 @@ export function evaluateMoveQuality({
   const decisionError = Math.max(0, optimalValForActor - actualEVForActor);
   const equitySwing = (postWin || 0) - (preWin || 0);
 
-  // Thresholds
+  // Precision thresholds
   const BEST_EPS = 0.005;
   const GREAT_EPS = 0.02;
   const GOOD_EPS = 0.05;
-  const MISTAKE_EPS = 0.12;
+  const INACCURACY_EPS = 0.10;
+  const MISTAKE_EPS = 0.20;
 
   let category = 'good';
   let label = 'Good move';
@@ -319,6 +323,10 @@ export function evaluateMoveQuality({
     category = 'good';
     label = 'Good move';
     icon = '✓';
+  } else if (decisionError < INACCURACY_EPS) {
+    category = 'inaccuracy';
+    label = 'Inaccuracy';
+    icon = '⚠️';
   } else if (decisionError < MISTAKE_EPS) {
     category = 'mistake';
     label = 'Mistake';
@@ -329,37 +337,63 @@ export function evaluateMoveQuality({
     icon = '??';
   }
 
-  // Brilliant play detection
-  if (isPlayerMove && (preWin || 0) <= 0.30 && (postWin || 0) >= 0.70) {
+  // Brilliant play detection: low win prob before, huge spike after, near optimal decision
+  if (isPlayerMove && (preWin || 0) <= 0.35 && (postWin || 0) >= 0.65 && decisionError < GREAT_EPS) {
     category = 'brilliant';
     label = 'Brilliant move';
     icon = '‼';
   }
 
-  const startPct = ((preWin || 0) * 100).toFixed(0);
-  const endPct = ((postWin || 0) * 100).toFixed(0);
+  const startPct = ((preWin || 0) * 100).toFixed(1);
+  const endPct = ((postWin || 0) * 100).toFixed(1);
   const diffSign = equitySwing >= 0 ? '+' : '';
-  const diffPct = (equitySwing * 100).toFixed(0);
+  const diffPct = (equitySwing * 100).toFixed(1);
 
   let description = `Win prob: ${startPct}% → ${endPct}% (${diffSign}${diffPct}%)`;
 
-  if (category === 'blunder' && equitySwing < -0.10) {
-    description = `Lead squandered: ${startPct}% → ${endPct}%`;
+  if (category === 'blunder') {
+    description = `Suboptimal bid lost ${(decisionError * 100).toFixed(1)}% EV (Win prob: ${startPct}% → ${endPct}%)`;
   } else if (category === 'best' && equitySwing < -0.01) {
-    description = `Optimal decision, unlucky variance: ${startPct}% → ${endPct}%`;
-  } else if (category === 'best' && equitySwing > 0.10) {
-    description = `Huge advantage gain: ${startPct}% → ${endPct}%`;
-  } else if ((preWin || 0) < 0.30 && (postWin || 0) > 0.50) {
-    description = `Clutch comeback: ${startPct}% → ${endPct}%`;
+    description = `Optimal DP bid (b*), unlucky variance: ${startPct}% → ${endPct}%`;
+  } else if (category === 'best' && equitySwing > 0.05) {
+    description = `Optimal DP bid (b*), gain: ${startPct}% → ${endPct}%`;
+  } else if (category === 'brilliant') {
+    description = `Clutch comeback move! Win prob jumped from ${startPct}% to ${endPct}%`;
   }
 
   if (!isPlayerMove) {
     if (category === 'blunder' && equitySwing > 0) {
-      description = `Engine blunder: your win chance jumped ${diffSign}${diffPct}%`;
+      description = `Engine error: player win chance jumped ${diffSign}${diffPct}%`;
     } else if (category === 'best' && equitySwing < 0) {
-      description = `Optimal engine play: your win chance dropped to ${endPct}%`;
+      description = `Optimal engine play: player win chance dropped to ${endPct}%`;
     }
   }
 
-  return { category, label, icon, description, decisionError, equitySwing };
+  return {
+    category,
+    label,
+    icon,
+    description,
+    decisionError,
+    equitySwing,
+    optimalEV: optimalValForActor,
+    actualEV: actualEVForActor,
+  };
 }
+
+/**
+ * Calculate Chess.com-style overall accuracy percentage (0 - 100%) for a given actor
+ */
+export function calculateGameAccuracy(moveHistory, actor = 'player') {
+  const actorMoves = (moveHistory || []).filter((m) => m.actor === actor);
+  if (actorMoves.length === 0) return '100.0';
+
+  const accuracies = actorMoves.map((m) => {
+    const err = m.decisionError || 0;
+    return 100 * Math.exp(-3.0 * err);
+  });
+
+  const sum = accuracies.reduce((a, b) => a + b, 0);
+  return (sum / actorMoves.length).toFixed(1);
+}
+

@@ -1,15 +1,28 @@
 // src/components/GamePlayback.jsx
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft, RotateCcw, Play, Pause, AlertTriangle } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronLeft,
+  RotateCcw,
+  Play,
+  Pause,
+  AlertTriangle,
+  TrendingUp,
+  Award,
+} from 'lucide-react';
+import { getPlayerPerspectiveWinProb, evaluateMoveQuality, getEvBreakdown } from '../utils/mathEngine';
 
 export default function GamePlayback() {
   const [currentMove, setCurrentMove] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const moves = [
+  // Sequence of moves with exact state tracking
+  const rawMoves = [
     {
       step: 0,
       title: "Initial Game Setup",
+      n1: 20,
+      m2: 20,
       p1: { question: "Initial Pool", answer: "", n: 20, pool: Array.from({ length: 20 }, (_, i) => i + 1) },
       p2: { question: "Initial Pool", answer: "", m: 20, pool: Array.from({ length: 20 }, (_, i) => i + 1) },
       comment: "Both players start with 20 candidate faces.",
@@ -17,32 +30,67 @@ export default function GamePlayback() {
     {
       step: 1,
       title: "Turn 1: Opening Questions",
-      p1: { question: "[1..9]?", answer: "YES", n: 9, pool: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
-      p2: { question: "[1..8]?", answer: "NO", m: 12, pool: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] },
-      comment: "P1 narrows candidates to 9; P2 eliminates 8 candidates.",
+      n1: 9,
+      m2: 12,
+      p1: { question: "[1..9]?", answer: "YES", n: 9, pool: [1, 2, 3, 4, 5, 6, 7, 8, 9], b: 9 },
+      p2: { question: "[1..8]?", answer: "NO", m: 12, pool: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], b: 8 },
+      comment: "P1 asks [1..9]? (YES) -> pool n=9. P2 asks [1..8]? (NO) -> pool m=12.",
     },
     {
       step: 2,
       title: "Turn 2: Mid-Game Narrowing",
-      p1: { question: "[1..5]?", answer: "YES", n: 5, pool: [1, 2, 3, 4, 5] },
-      p2: { question: "[9..12]?", answer: "NO", m: 8, pool: [13, 14, 15, 16, 17, 18, 19, 20] },
-      comment: "P1 reduces pool to 5 candidates; P2 has 8 candidates.",
+      n1: 5,
+      m2: 8,
+      p1: { question: "[1..5]?", answer: "YES", n: 5, pool: [1, 2, 3, 4, 5], b: 5 },
+      p2: { question: "[9..12]?", answer: "NO", m: 8, pool: [13, 14, 15, 16, 17, 18, 19, 20], b: 4 },
+      comment: "P1 narrows to n=5 candidates ({1..5}). P2 narrows to m=8 candidates.",
     },
     {
       step: 3,
       title: "Turn 3: Approaching Deduction",
-      p1: { question: "[1..3]?", answer: "NO", n: 2, pool: [4, 5] },
-      p2: { question: "[13..13]?", answer: "NO", m: 7, pool: [14, 15, 16, 17, 18, 19, 20] },
-      comment: "P1 reaches n=2 candidates ({4, 5}). P2 has 7 candidates.",
+      n1: 2,
+      m2: 7,
+      p1: { question: "[1..3]?", answer: "NO", n: 2, pool: [4, 5], b: 3 },
+      p2: { question: "[13..13]?", answer: "NO", m: 7, pool: [14, 15, 16, 17, 18, 19, 20], b: 1 },
+      comment: "P1 reaches n=2 candidates ({4, 5}). P2 has m=7 candidates.",
     },
     {
       step: 4,
-      title: "Turn 4: The Critical Discrepancy",
-      p1: { question: "[4..4]?", answer: "NO", n: 1, pool: [5], winner: true },
+      title: "Turn 4: The Critical Discrepancy (Death Valley)",
+      n1: 1,
+      m2: 7,
+      p1: { question: "[4..4]?", answer: "NO", n: 1, pool: [5], winner: true, b: 1 },
       p2: { question: "—", answer: "", m: 7, pool: [14, 15, 16, 17, 18, 19, 20], skipped: true },
       comment: "P1 asks '[4]?' and gets NO, leaving pool {5} (n=1). In Dr. Nica's Race-to-1 model, P1 wins instantly! In real Guess Who, P1's turn ENDS, entering Death Valley while P2 gets their turn to guess!",
     },
   ];
+
+  // Enrich moves with exact DP Win Probabilities and Move Qualities
+  const moves = rawMoves.map((m, idx) => {
+    const preWinP1 = idx === 0 ? getPlayerPerspectiveWinProb(20, 20, true, 'soft') : getPlayerPerspectiveWinProb(rawMoves[idx - 1].n1, rawMoves[idx - 1].m2, true, 'soft');
+    const postWinP1 = getPlayerPerspectiveWinProb(m.n1, m.m2, true, 'soft');
+
+    let qualityP1 = null;
+    if (idx > 0 && m.p1.b) {
+      qualityP1 = evaluateMoveQuality({
+        nBefore: rawMoves[idx - 1].n1,
+        mBefore: rawMoves[idx - 1].m2,
+        isPlayerMove: true,
+        isGuess: m.p1.n === 1 && m.p1.b === 1,
+        b: m.p1.b,
+        preWin: preWinP1,
+        postWin: postWinP1,
+        model: 'soft',
+      });
+    }
+
+    return {
+      ...m,
+      winProbP1: postWinP1,
+      winProbP2: 1 - postWinP1,
+      qualityP1,
+    };
+  });
 
   useEffect(() => {
     let timer;
@@ -55,7 +103,7 @@ export default function GamePlayback() {
           }
           return prev + 1;
         });
-      }, 2500);
+      }, 3000);
     }
     return () => clearInterval(timer);
   }, [isPlaying, moves.length]);
@@ -78,6 +126,7 @@ export default function GamePlayback() {
 
   return (
     <div className="game-playback-container">
+      {/* Top Controls Bar */}
       <div className="playback-controls-bar">
         <div className="playback-btns">
           <button
@@ -111,9 +160,27 @@ export default function GamePlayback() {
         </div>
       </div>
 
+      {/* Win Odds Bar Header */}
+      <div className="playback-odds-bar">
+        <div className="odds-item">
+          <span>P1 Win Chance:</span>
+          <strong className="odds-val">{(state.winProbP1 * 100).toFixed(1)}%</strong>
+        </div>
+        <div className="odds-progress-container">
+          <div
+            className="odds-fill p1"
+            style={{ width: `${state.winProbP1 * 100}%` }}
+          />
+        </div>
+        <div className="odds-item">
+          <span>P2 Win Chance:</span>
+          <strong className="odds-val">{(state.winProbP2 * 100).toFixed(1)}%</strong>
+        </div>
+      </div>
+
       {/* Commentary Banner */}
       <div className="playback-commentary">
-        <span className="comment-tag">Analysis</span>
+        <span className="comment-tag">DP Analysis</span>
         <span className="comment-text">{state.comment}</span>
       </div>
 
@@ -135,6 +202,16 @@ export default function GamePlayback() {
                   {state.p1.answer}
                 </span>
               )}
+            </div>
+          )}
+
+          {state.qualityP1 && (
+            <div className="playback-quality-row">
+              <span className={`inline-quality quality-${state.qualityP1.category}`}>
+                <span className="quality-icon-inline">{state.qualityP1.icon}</span>
+                <span className="quality-label-inline">{state.qualityP1.label}</span>
+              </span>
+              <span className="quality-desc-text">{state.qualityP1.description}</span>
             </div>
           )}
 
@@ -192,3 +269,4 @@ export default function GamePlayback() {
     </div>
   );
 }
+
