@@ -49,11 +49,13 @@ export default function MoveReviewModal({
 
   const qualityCategories = [
     { key: 'brilliant', label: 'Brilliant', icon: '‼' },
-    { key: 'best', label: 'Best', icon: '!!' },
-    { key: 'great', label: 'Great', icon: '★' },
-    { key: 'good', label: 'Good', icon: '✓' },
+    { key: 'great', label: 'Great Move', icon: '★' },
+    { key: 'best', label: 'Best Move', icon: '!!' },
+    { key: 'book', label: 'Book Move', icon: '📖' },
+    { key: 'good', label: 'Good Move', icon: '✓' },
     { key: 'inaccuracy', label: 'Inaccuracy', icon: '⚠️' },
     { key: 'mistake', label: 'Mistake', icon: '?' },
+    { key: 'miss', label: 'Miss', icon: '❌' },
     { key: 'blunder', label: 'Blunder', icon: '??' },
   ];
 

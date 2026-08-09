@@ -253,10 +253,28 @@ export function getPlayerPerspectiveWinProb(nPlayer, nComputer, isPlayerTurn, mo
 }
 
 /**
- * Evaluate move decision quality & equity swing
+ * Compute positional volatility std_dev(EV) across all possible moves at state (n, m)
  */
+export function getPositionalVolatility(n, m, model = 'soft') {
+  const evs = getEvBreakdown(n, m, model).map((r) => r.ev);
+  if (evs.length <= 1) return 0.05;
+  const mean = evs.reduce((a, b) => a + b, 0) / evs.length;
+  const variance = evs.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / evs.length;
+  return Math.max(0.01, Math.sqrt(variance));
+}
+
 /**
- * Evaluate move decision quality & equity swing
+ * Modern CAPS2 Move Accuracy Curve
+ * Accuracy = 103.17 * exp(-0.0435 * (deltaW * 100)) - 3.17, clamped to [0, 100]
+ */
+export function calculateCaps2Accuracy(decisionError) {
+  const deltaPct = Math.max(0, (decisionError || 0) * 100);
+  const rawAcc = 103.17 * Math.exp(-0.0435 * deltaPct) - 3.17;
+  return Math.max(0, Math.min(100, rawAcc));
+}
+
+/**
+ * Evaluate move decision quality & equity swing using Chess.com CAPS2 blueprint
  */
 export function evaluateMoveQuality({
   nBefore,
@@ -267,6 +285,8 @@ export function evaluateMoveQuality({
   preWin,
   postWin,
   model = 'soft',
+  elo = 1500,
+  prevMoveWasOpponentBlunder = false,
 }) {
   const safeNBefore = Math.max(1, Math.min(MAX_POOL_SIZE, nBefore || 1));
   const safeMBefore = Math.max(1, Math.min(MAX_POOL_SIZE, mBefore || 1));
@@ -275,7 +295,8 @@ export function evaluateMoveQuality({
   const actorN = isPlayerMove ? safeNBefore : safeMBefore;
   const actorM = isPlayerMove ? safeMBefore : safeNBefore;
 
-  const optimalValForActor = getWinValue(actorN, actorM, activeModel);
+  const evBreakdown = getEvBreakdown(actorN, actorM, activeModel);
+  const optimalValForActor = evBreakdown[0]?.ev ?? getWinValue(actorN, actorM, activeModel);
 
   // Compute EV of actual action taken
   let actualEVForActor = 0;
@@ -300,48 +321,82 @@ export function evaluateMoveQuality({
   const decisionError = Math.max(0, optimalValForActor - actualEVForActor);
   const equitySwing = (postWin || 0) - (preWin || 0);
 
-  // Precision thresholds
-  const BEST_EPS = 0.005;
-  const GREAT_EPS = 0.02;
-  const GOOD_EPS = 0.05;
-  const INACCURACY_EPS = 0.10;
-  const MISTAKE_EPS = 0.20;
+  // ELO Rating Scaling Factor
+  const safeElo = Math.min(2500, Math.max(800, elo || 1500));
+  const eloScale = 1 + (2000 - safeElo) / 3000;
+  const effectiveError = decisionError / eloScale;
+
+  const moveAccuracy = calculateCaps2Accuracy(decisionError);
+
+  // Thresholds adjusted for ELO rating scaling
+  const BEST_EPS = 0.005 * eloScale;
+  const GOOD_EPS = 0.040 * eloScale;
+  const INACCURACY_EPS = 0.100 * eloScale;
+  const MISTAKE_EPS = 0.200 * eloScale;
 
   let category = 'good';
   let label = 'Good move';
   let icon = '✓';
 
-  if (decisionError < BEST_EPS) {
-    category = 'best';
-    label = 'Best move';
-    icon = '!!';
-  } else if (decisionError < GREAT_EPS) {
-    category = 'great';
-    label = 'Great move';
-    icon = '★';
-  } else if (decisionError < GOOD_EPS) {
-    category = 'good';
-    label = 'Good move';
-    icon = '✓';
-  } else if (decisionError < INACCURACY_EPS) {
-    category = 'inaccuracy';
-    label = 'Inaccuracy';
-    icon = '⚠️';
-  } else if (decisionError < MISTAKE_EPS) {
-    category = 'mistake';
-    label = 'Mistake';
-    icon = '?';
-  } else {
-    category = 'blunder';
-    label = 'Blunder';
-    icon = '??';
-  }
+  // --- SPECIAL CONTEXTUAL CLASSIFICATIONS ---
 
-  // Brilliant play detection: low win prob before, huge spike after, near optimal decision
-  if (isPlayerMove && (preWin || 0) <= 0.35 && (postWin || 0) >= 0.65 && decisionError < GREAT_EPS) {
+  // 1. 📖 Book Move: Standard theoretical opening split at initial pool state (20,20)
+  if (actorN === 20 && actorM === 20 && !isGuess && (b === 8 || b === 10)) {
+    category = 'book';
+    label = 'Book move';
+    icon = '📖';
+  }
+  // 2. ‼ Brilliant: Trailing or high-uncertainty position with turnaround win swing & low EV loss
+  else if (isPlayerMove && (preWin || 0) <= 0.35 && (postWin || 0) >= 0.60 && effectiveError < 0.01) {
     category = 'brilliant';
     label = 'Brilliant move';
     icon = '‼';
+  }
+  // 3. ★ Great Move: Single winning path (second best move is a mistake/blunder >= 0.10 EV drop)
+  else if (
+    effectiveError < BEST_EPS &&
+    evBreakdown.length > 1 &&
+    (evBreakdown[1].diffFromOptimal || 0) >= 0.10
+  ) {
+    category = 'great';
+    label = 'Great move';
+    icon = '★';
+  }
+  // 4. !! Best Move: Bellman optimal
+  else if (effectiveError < BEST_EPS) {
+    category = 'best';
+    label = 'Best move';
+    icon = '!!';
+  }
+  // 5. ❌ Miss: Opponent blundered on previous turn, but actor failed to punish with optimal push
+  else if (prevMoveWasOpponentBlunder && effectiveError >= GOOD_EPS) {
+    category = 'miss';
+    label = 'Miss';
+    icon = '❌';
+  }
+  // 6. ✓ Good Move
+  else if (effectiveError < GOOD_EPS) {
+    category = 'good';
+    label = 'Good move';
+    icon = '✓';
+  }
+  // 7. ⚠️ Inaccuracy
+  else if (effectiveError < INACCURACY_EPS) {
+    category = 'inaccuracy';
+    label = 'Inaccuracy';
+    icon = '⚠️';
+  }
+  // 8. ? Mistake
+  else if (effectiveError < MISTAKE_EPS) {
+    category = 'mistake';
+    label = 'Mistake';
+    icon = '?';
+  }
+  // 9. ?? Blunder
+  else {
+    category = 'blunder';
+    label = 'Blunder';
+    icon = '??';
   }
 
   const startPct = ((preWin || 0) * 100).toFixed(1);
@@ -351,19 +406,23 @@ export function evaluateMoveQuality({
 
   let description = `Win prob: ${startPct}% → ${endPct}% (${diffSign}${diffPct}%)`;
 
-  if (category === 'blunder') {
-    description = `Suboptimal bid lost ${(decisionError * 100).toFixed(1)}% EV (Win prob: ${startPct}% → ${endPct}%)`;
+  if (category === 'book') {
+    description = `Theoretical opening split (b* = ${b}) at (20,20)`;
+  } else if (category === 'great') {
+    description = `The ONLY move that preserves your advantage! Second best lost ${(evBreakdown[1].diffFromOptimal * 100).toFixed(1)}% EV`;
+  } else if (category === 'brilliant') {
+    description = `Clutch turnaround play! Win prob jumped from ${startPct}% to ${endPct}%`;
+  } else if (category === 'miss') {
+    description = `Missed chance to punish opponent blunder! Lost ${(decisionError * 100).toFixed(1)}% EV`;
+  } else if (category === 'blunder') {
+    description = `Critical error lost ${(decisionError * 100).toFixed(1)}% EV (Win prob: ${startPct}% → ${endPct}%)`;
   } else if (category === 'best' && equitySwing < -0.01) {
     description = `Optimal DP bid (b*), unlucky variance: ${startPct}% → ${endPct}%`;
-  } else if (category === 'best' && equitySwing > 0.05) {
-    description = `Optimal DP bid (b*), gain: ${startPct}% → ${endPct}%`;
-  } else if (category === 'brilliant') {
-    description = `Clutch comeback move! Win prob jumped from ${startPct}% to ${endPct}%`;
   }
 
   if (!isPlayerMove) {
     if (category === 'blunder' && equitySwing > 0) {
-      description = `Engine error: player win chance jumped ${diffSign}${diffPct}%`;
+      description = `Engine blunder: player win chance jumped ${diffSign}${diffPct}%`;
     } else if (category === 'best' && equitySwing < 0) {
       description = `Optimal engine play: player win chance dropped to ${endPct}%`;
     }
@@ -376,24 +435,36 @@ export function evaluateMoveQuality({
     description,
     decisionError,
     equitySwing,
+    moveAccuracy: parseFloat(moveAccuracy.toFixed(1)),
     optimalEV: optimalValForActor,
     actualEV: actualEVForActor,
   };
 }
 
 /**
- * Calculate Chess.com-style overall accuracy percentage (0 - 100%) for a given actor
+ * Calculate Chess.com CAPS2 Volatility-Weighted Harmonic Mean Match Accuracy (0 - 100%)
  */
-export function calculateGameAccuracy(moveHistory, actor = 'player') {
+export function calculateGameAccuracy(moveHistory, actor = 'player', model = 'soft') {
   const actorMoves = (moveHistory || []).filter((m) => m.actor === actor);
   if (actorMoves.length === 0) return '100.0';
 
-  const accuracies = actorMoves.map((m) => {
-    const err = m.decisionError || 0;
-    return 100 * Math.exp(-3.0 * err);
+  let weightedSum = 0;
+  let weightSum = 0;
+  let harmonicInverseSum = 0;
+
+  actorMoves.forEach((m) => {
+    const acc = Math.max(1, m.moveAccuracy ?? calculateCaps2Accuracy(m.decisionError));
+    const volatility = getPositionalVolatility(m.nBefore || 20, m.mBefore || 20, model);
+
+    weightedSum += volatility * acc;
+    weightSum += volatility;
+    harmonicInverseSum += 1 / acc;
   });
 
-  const sum = accuracies.reduce((a, b) => a + b, 0);
-  return (sum / actorMoves.length).toFixed(1);
-}
+  const weightedMean = weightSum > 0 ? weightedSum / weightSum : 100;
+  const harmonicMean = actorMoves.length / (harmonicInverseSum || 0.01);
 
+  // Combined CAPS2 Harmonic-Volatility Mean
+  const finalAccuracy = 0.5 * (weightedMean + harmonicMean);
+  return Math.max(0, Math.min(100, finalAccuracy)).toFixed(1);
+}
